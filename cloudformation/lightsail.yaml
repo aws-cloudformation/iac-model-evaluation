@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Deploy a Lightsail instance and all associated resources 
+
+Parameters:
+  BucketName:
+    Description: The name of the bucket to be created by Lightsail
+    Type: String
+  DomainName:
+    Description: The domain name for the certificate
+    Type: String
+
+Resources:
+
+  # A Lightsail alarm
+  # A lightsail 
+  MyAlarm:
+    Type: AWS::Lightsail::Alarm
+    Properties:
+      AlarmName: my-alarm
+      MonitoredResourceName: !Ref MyInstance
+      MetricName: CPUUtilization
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 90
+
+  # A lightsail bucket
+  MyBucket:
+    Type: AWS::Lightsail::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      BundleId: medium_1_0 
+
+  # A lightsail certificate
+  MyCertificate:
+    Type: AWS::Lightsail::Certificate
+    Properties:
+      CertificateName: my-lightsail-cert
+      DomainName: !Ref DomainName
+
+  # A lightsail container
+  MyContainer:
+    Type: AWS::Lightsail::Container
+    Properties:
+      ServiceName: my-lightsail-container-svc 
+      Power: medium
+      Scale: 2
+
+  # A lightsail postgres database
+  MyDatabase:
+    Type: AWS::Lightsail::Database
+    Properties:
+      RelationalDatabaseName: my-lightsail-db 
+      RelationalDatabaseBlueprintId: postgres_16
+      RelationalDatabaseBundleId: medium_2_0
+      MasterDatabaseName: postgres
+      MasterUsername: dbadmin
+
+  # A lightsail disk with 128Gb 
+  MyDisk:
+    Type: AWS::Lightsail::Disk
+    Properties:
+      DiskName: my-lightsail-disk
+      SizeInGb: 128
+
+        #  MyDistribution:
+        #    Type: AWS::Lightsail::Distribution
+        #    DependsOn: MyInstance
+        #    Properties:
+        #      DistributionName: my-lightsail-distro 
+        #      BundleId: medium_1_0
+        #      DefaultCacheBehavior: 
+        #        Behavior: dont-cache
+        #      Origin: 
+        #        Name: !Ref MyInstance
+        #        ProtocolPolicy: https-only
+        #        RegionName: us-east-1
+
+  # A lightsail Amazon Linux 2 instance
+  MyInstance:
+    Type: AWS::Lightsail::Instance
+    Properties:
+      InstanceName: my-lightsail-instance 
+      BlueprintId: amazon_linux_2 
+      BundleId: medium_3_0
+
+  # A lightsail loadbalancer
+  MyLoadBalancer:
+    Type: AWS::Lightsail::LoadBalancer
+    Properties:
+      LoadBalancerName: my-lightsail-lb
+      InstancePort: 443 
+
+  # A lightsail TLS cert
+  MyLoadBalancerTlsCertificate:
+    Type: AWS::Lightsail::LoadBalancerTlsCertificate
+    Properties:
+      LoadBalancerName: !Ref MyLoadBalancer
+      CertificateName: my-lightsail-lb-cert
+      CertificateDomainName: !Ref DomainName
+
+  # A lightsail static IP
+  MyStaticIp:
+    Type: AWS::Lightsail::StaticIp
+    Properties:
+      StaticIpName: my-lightsail-static-ip 
+      AttachedTo: !Ref MyInstance
+
+

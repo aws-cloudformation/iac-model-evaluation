@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  This stack creates a SNS topic using KMS encryption
+  and then subscriptions to associate to the SNS topic
+
+Parameters:
+  SnsKmsKey:
+    Description: The KMS key master ID for the SNS topic
+    Type: String
+
+  SqsKmsKey:
+    Description: The KMS key master ID for the SQS queue
+    Type: String
+
+  UserEmail:
+    Description: The subscribers email address
+    Type: String
+
+  HttpEndpoint:
+    Description: The HTTP endpoint for a SNS subscription
+    Type: String
+
+Resources:
+
+  # A SNS topic
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref SnsKmsKey
+
+  # Email subscription to a SNS topic
+  SubscriptionEmail:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !GetAtt Topic.TopicArn
+      Protocol: email
+      Endpoint: !Ref UserEmail
+
+
+  # A SQS queue
+  SQS:
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Type: AWS::SQS::Queue
+    Properties:
+      KmsMasterKeyId: !Ref SqsKmsKey
+      MessageRetentionPeriod: 1024
+  
+  # SQS subscription to a SNS topic
+  SubscriptionSQS:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !GetAtt Topic.TopicArn
+      Protocol: sqs
+      Endpoint: !GetAtt SQS.Arn
+
+  # A http subscription to a SNS topic
+  SubscriptionHttp:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !GetAtt Topic.TopicArn
+      Protocol: https
+      Endpoint: !Ref HttpEndpoint
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          numRetries: 20
+          minDelayTarget: 10
+          maxDelayTarget: 30
+          numMinDelayRetries: 3
+          numMaxDelayRetries: 17
+          numNoDelayRetries: 0
+          backoffFunction: exponential

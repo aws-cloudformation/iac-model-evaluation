@@ -1,0 +1,225 @@
+Description: |
+  This template creates a CodePipeline pipeline and a CodeBuild job.
+  It also creates the roles and policies necessary, and the buckets 
+  to store source and artifacts.
+
+Resources:
+
+  # CodePipeline pipeline role
+  PipelineRole:
+    Metadata: 
+      Comment: CodePipeline pipeline role
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+        Version: '2012-10-17'
+
+  # CodePipeline pipeline policy
+  PipelinePolicy:
+    Metadata:
+      Comment: CodePipeline pipeline policy
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: pipeline-policy
+      Roles:
+        - !Ref PipelineRole
+      PolicyDocument:
+        Statement:
+          - Action:
+              - s3:GetObject*
+              - s3:GetBucket*
+              - s3:List*
+              - s3:DeleteObject*
+              - s3:PutObject*
+              - s3:Abort*
+            Effect: Allow
+            Resource:
+              - !GetAtt ArtifactBucket.Arn
+              - !Join
+                - ''
+                - - !GetAtt ArtifactBucket.Arn
+                  - /*
+              - !GetAtt SourceBucket.Arn
+              - !Join
+                - ''
+                - - !GetAtt SourceBucket.Arn
+                  - /*
+          - Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+              - codebuild:StopBuild
+              - codebuild:RetryBuild
+              - codebuild:StartBuildBatch
+              - codebuild:RetryBuildBatch
+              - codebuild:StopBuildBatch
+            Effect: Allow
+            Resource:
+              - !GetAtt BuildProject.Arn
+
+  # A CodePipeline pipeline
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Metadata:
+      Comment: A CodePipeline pipeline
+    Properties:
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: S3Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: S3
+                Version: 1
+              Configuration:
+                S3Bucket: !Ref SourceBucket
+                S3ObjectKey: "source.zip"
+                PollForSourceChanges: true
+              OutputArtifacts:
+                - Name: source
+        - Name: Build
+          Actions:
+            - Name: BuildAction0
+              InputArtifacts:
+                - Name: source
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName: !Ref BuildProject
+                EnvironmentVariables: |-
+                  [
+                    {
+                      "name": "MY_VAR",
+                      "type": "PLAINTEXT",
+                      "value": "abc"
+                    }
+                  ]
+              RunOrder: 1
+
+
+  # CodeBuild build project role
+  BuildProjectRole:
+    Metadata:
+      Comment: CodeBuild build project role
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+        Version: '2012-10-17'
+
+  # CodeBuild build project policy
+  BuildProjectPolicy:
+    Metadata:
+      Comment: CodeBuild build project policy
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - codebuild:StartBuild
+              - codebuild:BatchGetBuilds
+              - codebuild:StopBuild
+              - codebuild:RetryBuild
+              - codebuild:StartBuildBatch
+              - codebuild:RetryBuildBatch
+              - codebuild:StopBuildBatch
+            Effect: Allow
+            Resource:
+              - !GetAtt BuildProject.Arn
+        Version: '2012-10-17'
+      PolicyName: build-project-policy
+      Roles:
+        - !Ref BuildProjectRole
+
+  # CodeBuild build project
+  BuildProject:
+    Metadata:
+      Comment: CodeBuild build project
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_LARGE
+        Type: LINUX_CONTAINER
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+        EnvironmentVariables:
+        - Name: MY_VAR
+          Type: PLAINTEXT
+          Value: "xyz"
+      ServiceRole: !GetAtt BuildProjectRole.Arn
+      Source:
+        Type: CODEPIPELINE
+      TimeoutInMinutes: 480
+
+
+  # A bucket to be used as the source for the pipeline
+  SourceBucket:
+    Metadata:
+      Comment: A bucket to be used as the source for the pipeline
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: Not necessary for this example
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+             SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # A bucket to be used for pipeline artifacts 
+  ArtifactBucket:
+    Metadata:
+      Comment: A bucket to be used for pipeline artifacts  
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: Not necessary for this example
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+             SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+

@@ -1,0 +1,257 @@
+{
+    "Description": "Create a secure bucket that passes security scanning checks.\nAlso create a bucket to store replicas, and an access log bucket.\n",
+    "Parameters": {
+        "ResourceNamePrefix": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ReplicationPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Metadata": {
+                "Comment": "An IAM policy to be used for bucket replication"
+            },
+            "Properties": {
+                "PolicyName": "bucket-replication-policy",
+                "Roles": [
+                    {
+                        "Ref": "ReplicationRole"
+                    }
+                ],
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetReplicationConfiguration",
+                                "s3:ListBucket"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${ResourceNamePrefix}-source-${AWS::Region}-${AWS::AccountId}"
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:GetObjectVersionForReplication",
+                                "s3:GetObjectVersionAcl",
+                                "s3:GetObjectVersionTagging"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${ResourceNamePrefix}-source-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:ReplicateObject",
+                                "s3:ReplicateDelete",
+                                "s3:ReplicationTags"
+                            ],
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${ResourceNamePrefix}-replicas-${AWS::Region}-${AWS::AccountId}/*"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "ReplicationRole": {
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "Comment": "An IAM role that is used for replication objects from one bucket to another"
+            },
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "s3.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "ReplicaBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket is used as a target for replicas from the main source bucket",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED",
+                        "S3_BUCKET_LOGGING_ENABLED"
+                    ]
+                },
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_18",
+                            "comment": "This is the replica bucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${ResourceNamePrefix}-replicas-${AWS::Region}-${AWS::AccountId}"
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "ObjectLockEnabled": false
+            }
+        },
+        "MyBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "A secure bucket that passes security scanning checks",
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_DEFAULT_LOCK_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${ResourceNamePrefix}-source-${AWS::Region}-${AWS::AccountId}"
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "LoggingConfiguration": {
+                    "DestinationBucketName": {
+                        "Ref": "LogBucket"
+                    }
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "ObjectLockEnabled": false,
+                "ReplicationConfiguration": {
+                    "Role": {
+                        "Fn::GetAtt": [
+                            "ReplicationRole",
+                            "Arn"
+                        ]
+                    },
+                    "Rules": [
+                        {
+                            "Destination": {
+                                "Bucket": {
+                                    "Fn::GetAtt": [
+                                        "ReplicaBucket",
+                                        "Arn"
+                                    ]
+                                }
+                            },
+                            "Status": "Enabled"
+                        }
+                    ]
+                }
+            }
+        },
+        "LogBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Metadata": {
+                "Comment": "This bucket records access logs for MyBucket",
+                "cfn_nag": {
+                    "rules_to_suppress": [
+                        {
+                            "id": "W35",
+                            "reason": "This is the log bucket"
+                        },
+                        {
+                            "id": "W51",
+                            "reason": "Will be added by the consumer"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "S3_BUCKET_LOGGING_ENABLED",
+                        "S3_BUCKET_REPLICATION_ENABLED"
+                    ]
+                },
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_18",
+                            "comment": "This is the log bucket"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "BucketName": {
+                    "Fn::Sub": "${ResourceNamePrefix}-logs-${AWS::Region}-${AWS::AccountId}"
+                },
+                "VersioningConfiguration": {
+                    "Status": "Enabled"
+                },
+                "BucketEncryption": {
+                    "ServerSideEncryptionConfiguration": [
+                        {
+                            "ServerSideEncryptionByDefault": {
+                                "SSEAlgorithm": "AES256"
+                            }
+                        }
+                    ]
+                },
+                "PublicAccessBlockConfiguration": {
+                    "BlockPublicAcls": true,
+                    "BlockPublicPolicy": true,
+                    "IgnorePublicAcls": true,
+                    "RestrictPublicBuckets": true
+                },
+                "ObjectLockEnabled": true,
+                "ObjectLockConfiguration": {
+                    "ObjectLockEnabled": "Enabled",
+                    "Rule": {
+                        "DefaultRetention": {
+                            "Mode": "COMPLIANCE",
+                            "Years": 1
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

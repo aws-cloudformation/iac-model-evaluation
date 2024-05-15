@@ -1,0 +1,17 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  This stack creates a SNS topic using KMS encryption
+
+Parameters:
+  KmsKey:
+    Description: The KMS key master ID
+    Type: String
+
+Resources:
+
+  # A SNS topic
+  Topic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: !Ref KmsKey

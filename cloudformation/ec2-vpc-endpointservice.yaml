@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Parameters:
+  AWSPrincipals:
+    Type: CommaDelimitedList
+
+  SubnetIDs:
+    Type: CommaDelimitedList
+
+Resources:
+
+  # An internal network load balancer with cross zone load balancing enabled
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: network
+      Scheme: internal
+      Subnets: !Ref SubnetIDs
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: true
+
+  # Create a VPC endpoint service for the NLB
+  VpcEndpointService:
+    Type: AWS::EC2::VPCEndpointService
+    Properties:
+      AcceptanceRequired: true
+      NetworkLoadBalancerArns:
+        - !Ref NetworkLoadBalancer
+
+  # Give permissions to AWS principals to access the endpoint
+  VpcEndpointServicePermissions:
+    Type: AWS::EC2::VPCEndpointServicePermissions
+    Properties:
+      AllowedPrincipals: !Ref AWSPrincipals
+      ServiceId: !Ref VpcEndpointService

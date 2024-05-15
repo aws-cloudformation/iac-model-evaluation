@@ -1,0 +1,236 @@
+Description: |
+  This stack automates the creation of an EC2 AMI image using Amazon Linux 2.
+  It also creates the related resources such as roles and policies.
+
+Resources:
+
+  # An S3 bucket to hold image builder logs
+  ImageBuilderLogBucket:
+    Metadata:
+      Comment: An S3 bucket to hold image builder logs
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: This is a log bucket
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      ObjectLockEnabled: false
+      VersioningConfiguration:
+        Status: Enabled
+
+  # An IAM policy to give EC2 Image Builder and SSM permissions to build images
+  ImageBuilderInstancePolicy:
+    Metadata:
+      Comment: | 
+        An IAM policy to give EC2 Image Builder and SSM permissions to build images.
+        This policy is based on AmazonSSMManagedInstanceCore and EC2InstanceProfileForImageBuilder.
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W3005
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: Resource Arns are not supported for ssmmessages and ec2messages
+          - id: CKV_AWS_108
+            commment: Image builder does not allow specific resources to be named for creation
+    Type: AWS::IAM::Policy
+    DependsOn: ImageBuilderInstanceRole
+    Properties:
+      PolicyName: imagebuilder
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: 
+              - ssm:DescribeAssociation
+              - ssm:GetDeployablePatchSnapshotForInstance
+              - ssm:GetDocument
+              - ssm:DescribeDocument
+              - ssm:GetManifest
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:ListAssociations
+              - ssm:ListInstanceAssociations
+              - ssm:PutInventory
+              - ssm:PutComplianceItems
+              - ssm:PutConfigurePackageResult
+              - ssm:UpdateAssociationStatus
+              - ssm:UpdateInstanceAssociationStatus
+              - ssm:UpdateInstanceInformation
+            Effect: Allow
+            Resource: "*"
+          - Action: 
+              - ssmmessages:CreateControlChannel
+              - ssmmessages:CreateDataChannel
+              - ssmmessages:OpenControlChannel
+              - ssmmessages:OpenDataChannel
+            Effect: Allow
+            Resource: "*"
+          - Action: 
+              - ec2messages:AcknowledgeMessage
+              - ec2messages:DeleteMessage
+              - ec2messages:FailMessage
+              - ec2messages:GetEndpoint
+              - ec2messages:GetMessages
+              - ec2messages:SendReply
+            Effect: Allow
+            Resource: "*" 
+          - Effect: Allow
+            Action:
+              - imagebuilder:GetComponent
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: "*"
+            Condition:
+              ForAnyValue:StringEquals:
+                kms:EncryptionContextKeys: aws:imagebuilder:arn
+                aws:CalledVia:
+                  - imagebuilder.amazonaws.com
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource: arn:aws:s3:::ec2imagebuilder*
+          - Effect: Allow
+            Action:
+              - logs:CreateLogStream
+              - logs:CreateLogGroup
+              - logs:PutLogEvents
+            Resource: arn:aws:logs:*:*:log-group:/aws/imagebuilder/*
+      Roles:
+        - !Ref ImageBuilderInstanceRole
+
+  # An IAM role to give EC2 Image Builder and SSM permissions to build images
+  ImageBuilderInstanceRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      Comment: Role to be used by instance during image build.
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - !Sub 'ec2.${AWS::URLSuffix}'
+        Version: '2012-10-17'
+      Path: /imagebuilder/
+
+  # A policy to allow the instance to save log files to the log bucket
+  ImageBuilderLogPolicy:
+    Metadata:
+      Comment: A policy to allow the instance to save log files to the log bucket
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ImageBuilderLogBucketPolicy
+      Roles:
+        - Ref: ImageBuilderInstanceRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - s3:PutObject
+            Effect: Allow
+            Resource:
+              - Fn::Sub:
+                  - arn:${AWS::Partition}:s3:::${BUCKET}/*
+                  - BUCKET:
+                      Ref: ImageBuilderLogBucket
+
+  # An instance profile for the image builder role
+  ImageBuilderInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /imagebuilder/
+      Roles:
+        - Ref: ImageBuilderInstanceRole
+
+  # An infrastructure configuration for building Amazon Linux 2 images
+  ImageBuilderConfig:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      Name: AL2-SSM 
+      InstanceProfileName:
+        Ref: ImageBuilderInstanceProfile
+      Logging:
+        S3Logs:
+          S3BucketName:
+            Ref: ImageBuilderLogBucket
+      TerminateInstanceOnFailure: false
+
+  # A CloudWatch log group for image builder logs 
+  ImageBuilderLogGroup:
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            comment: Log groups are encrypted by default
+      guard:
+        SuppressedRules:
+          - CLOUDWATCH_LOG_GROUP_ENCRYPTED
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: /aws/imagebuilder/AL2-SSM
+      RetentionInDays: 3
+
+  # An image builder recipe to build the latest version of Amazon Linux 2 with SSM support
+  AL2SSMImageRecipe:
+    Metadata:
+      Comment: An image builder recipe to build the latest version of Amazon Linux 2 with SSM support
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      Name: AL2-SSM
+      Version: 0.0.1
+      ParentImage:
+        Fn::Sub: arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x
+      Components:
+        - ComponentArn:
+            Fn::Sub: arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:component/update-linux/x.x.x
+      AdditionalInstanceConfiguration:
+        UserDataOverride:
+          Fn::Base64:
+            Fn::Sub: |
+              #!/bin/bash
+              sudo yum install -y https://s3.${AWS::Region}.${AWS::URLSuffix}/amazon-ssm-${AWS::Region}/latest/linux_amd64/amazon-ssm-agent.rpm
+
+  # An image builder image
+  AL2SSMImage:
+    Metadata:
+      Comment: An image builder image
+    Type: AWS::ImageBuilder::Image
+    Properties:
+      ImageRecipeArn:
+        Ref: AL2SSMImageRecipe
+      InfrastructureConfigurationArn:
+        Ref: ImageBuilderConfig
+
+  # An SSM Paramter to store the image id
+  AL2SSMImageParameter:
+    Metadata:
+      Comment: An SSM Parameter to store the image id
+    Type: AWS::SSM::Parameter
+    Properties:
+      Description: AL2 with SSM image id
+      Name: /images/AL2SSMImageId
+      Type: String
+      Value:
+        Fn::GetAtt: [AL2SSMImage, ImageId]
+

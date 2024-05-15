@@ -1,0 +1,47 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This stack creates a SQS queue using KMS encryption\n",
+    "Parameters": {
+        "KmsKey": {
+            "Description": "The KMS key master ID",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "Queue": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "DelaySeconds": 0,
+                "FifoQueue": false,
+                "KmsDataKeyReusePeriodSeconds": 300,
+                "KmsMasterKeyId": {
+                    "Ref": "KmsKey"
+                },
+                "MaximumMessageSize": 262144,
+                "MessageRetentionPeriod": 345600,
+                "ReceiveMessageWaitTimeSeconds": 0,
+                "VisibilityTimeout": 30
+            }
+        },
+        "FifoQueue": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "ContentBasedDeduplication": true,
+                "DelaySeconds": 0,
+                "FifoQueue": true,
+                "KmsDataKeyReusePeriodSeconds": 300,
+                "KmsMasterKeyId": {
+                    "Ref": "KmsKey"
+                },
+                "MaximumMessageSize": 262144,
+                "MessageRetentionPeriod": 345600,
+                "ReceiveMessageWaitTimeSeconds": 0,
+                "VisibilityTimeout": 30
+            }
+        }
+    }
+}

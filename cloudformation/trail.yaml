@@ -1,0 +1,32 @@
+Description: |
+  Create a CloudTrail trail to log events to a specified bucket
+
+Parameters:
+  BucketName:
+    Type: String
+
+Resources:
+
+
+  # A CloudTrail trail
+  Trail:
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_35
+      guard:
+        SuppressedRules:
+          - CLOUD_TRAIL_ENCRYPTION_ENABLED
+          - CLOUD_TRAIL_CLOUD_WATCH_LOGS_ENABLED
+          - CLOUDTRAIL_S3_DATAEVENTS_ENABLED
+    Type: AWS::CloudTrail::Trail
+    Properties:
+      S3BucketName: !Ref BucketName
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EnableLogFileValidation: true
+
+Outputs:
+  ARN:
+    Description: The trail ARN
+    Value: !GetAtt Trail.Arn

@@ -1,0 +1,113 @@
+{
+    "Description": "A Cognito user pool, client, federated identity provider, and a user pool domain\n",
+    "Resources": {
+        "UserPool": {
+            "Type": "AWS::Cognito::UserPool",
+            "Properties": {
+                "Schema": [
+                    {
+                        "AttributeDataType": "String",
+                        "Mutable": true,
+                        "Name": "email",
+                        "Required": false,
+                        "StringAttributeConstraints": {
+                            "MaxLength": "128"
+                        }
+                    },
+                    {
+                        "AttributeDataType": "String",
+                        "Mutable": true,
+                        "Name": "given_name",
+                        "Required": false,
+                        "StringAttributeConstraints": {
+                            "MaxLength": "128"
+                        }
+                    },
+                    {
+                        "AttributeDataType": "String",
+                        "Mutable": true,
+                        "Name": "family_name",
+                        "Required": false,
+                        "StringAttributeConstraints": {
+                            "MaxLength": "128"
+                        }
+                    }
+                ]
+            }
+        },
+        "Group": {
+            "Type": "AWS::Cognito::UserPoolGroup",
+            "Properties": {
+                "UserPoolId": {
+                    "Ref": "UserPool"
+                }
+            }
+        },
+        "FederateIdentityProvider": {
+            "Type": "AWS::Cognito::UserPoolIdentityProvider",
+            "Properties": {
+                "ProviderName": "MyProvider",
+                "ProviderType": "OIDC",
+                "UserPoolId": {
+                    "Ref": "UserPool"
+                },
+                "AttributeMapping": {
+                    "email": "EMAIL",
+                    "given_name": "GIVEN_NAME",
+                    "family_name": "FAMILY_NAME",
+                    "IdpIdentifiers": [],
+                    "ProviderDetails": {
+                        "client_id": "my.client.id",
+                        "client_secret": "{{resolve:secretsmanager:arn:aws:secretsmanager:us-east-1:012345678901:secret:my-secret:SecretString:::}}",
+                        "attributes_request_method": "GET",
+                        "authorize_scopes": "openid",
+                        "oidc_issuer": "https://issuer.example.com"
+                    }
+                }
+            }
+        },
+        "AppClient": {
+            "Type": "AWS::Cognito::UserPoolClient",
+            "DependsOn": [
+                "FederateIdentityProvider"
+            ],
+            "Properties": {
+                "UserPoolId": {
+                    "Ref": "UserPool"
+                },
+                "AllowedOAuthFlows": [
+                    "code"
+                ],
+                "AllowedOAuthFlowsUserPoolClient": true,
+                "AllowedOAuthScopes": [
+                    "phone",
+                    "email",
+                    "openid",
+                    "profile"
+                ],
+                "CallbackURLs": [
+                    "https://example.com"
+                ],
+                "ClientName": "Web",
+                "GenerateSecret": false,
+                "LogoutURLs": [
+                    "https://example.com"
+                ],
+                "RefreshTokenValidity": 1,
+                "SupportedIdentityProviders": [
+                    "COGNITO",
+                    "AmazonFederate"
+                ]
+            }
+        },
+        "UserPoolDomain": {
+            "Type": "AWS::Cognito::UserPoolDomain",
+            "Properties": {
+                "Domain": "example-com",
+                "UserPoolId": {
+                    "Ref": "UserPool"
+                }
+            }
+        }
+    }
+}

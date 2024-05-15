@@ -1,0 +1,223 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: Create all resources associated with CloudWatch logs
+
+Resources:
+
+  # A CloudWatch account policy
+  AccountPolicy:
+    Type: AWS::Logs::AccountPolicy
+    Properties:
+      PolicyName: account-policy
+      PolicyType: DATA_PROTECTION_POLICY
+      PolicyDocument: "{}"
+
+  # A CloudWatch delivery
+  Delivery:
+    Type: AWS::Logs::Delivery
+    Properties:
+      DeliverySourceName: !Ref DeliverySource 
+      DeliveryDestinationArn: !GetAtt DeliveryDestination.Arn 
+
+  # A CloudWatch delivery destination
+  DeliveryDestination:
+    Type: AWS::Logs::DeliveryDestination
+    Properties:
+      Name: delivery-dest 
+
+  # A CloudWatch delivery source 
+  DeliverySource:
+    Type: AWS::Logs::DeliverySource
+    Properties:
+      Name: delivery-source
+
+  # A CloudWatch log destination
+  Destination:
+    Type: AWS::Logs::Destination
+    Properties:
+      DestinationName: dest1
+      TargetArn: STRING
+      RoleArn: STRING
+
+  # A CloudWatch anomaly detector to scan log groups for anomalies
+  LogAnomalyDetector:
+    Type: AWS::Logs::LogAnomalyDetector
+    Properties: 
+      AnomalyVisibilityTime: 30
+      EvaluationFrequency: ONE_HOUR
+      LogGroupArnList:
+        - !GetAtt LogGroup.Arn
+
+  # A CloudWatch log group
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: my-log-group-1
+
+  # A CloudWatch log stream
+  LogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref LogGroup
+
+  # A CloudWatch metric filter
+  MetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref LogGroup
+      FilterPattern: "[..., maxMemoryLabel=\"Used:\", maxMemory, maxMemoryUnit=GB]"
+      MetricTransformations:
+        - MetricValue: "$maxMemory"
+          MetricNamespace: lambda-function 
+          MetricName: "MaxMemoryUsedGB"
+
+  # A CloudWatch query definition
+  QueryDefinition:
+    Type: AWS::Logs::QueryDefinition
+    Properties:
+      Name: query-1
+      QueryString: "@timestamp"
+
+  # A CloudWatch resource policy
+  ResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: resource-policy-1
+      PolicyDocument: "{}"
+
+  # A CloudWatch subscription filter 
+  SubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      DestinationArn: STRING
+      FilterPattern: STRING
+      LogGroupName: !Ref LogGroup
+
+  # A CloudWatch alarm that alarms when a lambda function takes longer than 5 seconds
+  DurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: lambda-alarm 
+      AlarmDescription: Alarm if function duration goes over 5s
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Dimensions:
+          - Name: FunctionName
+            Value: my-function 
+      Statistic: Average
+      Period: 600
+      EvaluationPeriods: 1
+      Threshold: 5000
+      ComparisonOperator: "GreaterThanThreshold"
+
+  # A CloudWatch alarm that alarms when a lambda function produces more than 5 errors in 5 minutes
+  ErrorAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+        AlarmName: FiveErrors
+        AlarmDescription: Alarm if we see 5 errors in 5 minutes
+        MetricName: Errors
+        Namespace: AWS/Lambda
+        Dimensions:
+            - Name: FunctionName
+              Value: my-function 
+        Statistic: "Sum"
+        Period: 300
+        EvaluationPeriods: 1
+        Threshold: 0
+        ComparisonOperator: GreaterThanThreshold
+
+  # A CloudWatch anomaly detector that looks for lambda errors
+  AnomalyDetector:
+    Type: AWS::CloudWatch::AnomalyDetector
+    Properties: 
+      MetricName: Errors
+      Namespace: AWS/Lambda 
+      Stat: Sum
+      Dimensions:
+        - Name: FunctionName
+          Value: my-function
+
+  # A CloudWatch composite alarm
+  CompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmRule: !Sub "ALARM(${ErrorAlarm}) AND ALARM(${DurationAlarm})"
+      AlarmActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:my-alarm-topic"
+
+  # A CloudWatch dashboard
+  Dashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: my-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 20,
+              "height": 10,
+              "properties": {
+                "view": "timeSeries",
+                "stacked": false,
+                "metrics": [
+                  ["AWS/Lambda", "Invocations", "FunctionName", "my-function", {
+                    "period": 3000,
+                    "stat": "Sum"
+                  }]
+                ],
+                "region": "${AWS::Region}",
+                "yAxis": {
+                  "left": {
+                    "min": 0
+                  }
+                }
+              }
+            }
+          ]
+        }
+
+  # A CloudWatch contributor insight rule
+  InsightRule:
+    Type: AWS::CloudWatch::InsightRule
+    Properties:
+      RuleState: ENABLED
+      RuleBody: !Sub |
+        {
+          "Schema": {
+              "Name": "CloudWatchLogRule",
+              "Version": 1
+          },
+          "LogGroupNames": [
+            "${LogGroup}"
+          ],
+          "LogFormat": "JSON",
+          "Contribution": {
+              "Keys": [
+                  "$.ip"
+              ],
+              "ValueOf": "$.requestBytes",
+              "Filters": [
+                  {
+                      "Match": "$.httpMethod",
+                      "In": [
+                          "PUT"
+                      ]
+                  }
+              ]
+          },
+          "AggregateOn": "Sum"
+        }
+      RuleName: rule-1
+
+  # A CloudWatch metric stream
+  MetricStream:
+    Type: AWS::CloudWatch::MetricStream
+    Properties:
+      FirehoseArn: !Sub "arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/name"
+      RoleArn: !Sub "arn:aws:iam::${AWS::AccountId}:role/roleName"
+      OutputFormat: json
+

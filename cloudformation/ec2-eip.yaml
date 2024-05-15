@@ -1,0 +1,53 @@
+Description: |
+  This stack automates the creation of an EC2 Elastic IP
+  and associates it to an EC2 instance
+
+Parameters:
+  LatestAmiId:
+    Description: Region specific image from the Parameter Store
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+
+  Subnet:
+    Description: The subnet to put the instance into
+    Type: AWS::EC2::Subnet::Id
+
+Resources:
+
+  # An IAM role to be assumed by the ec2 service
+  IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Actions:
+          - sts:AssumeRole
+      Path: "/"
+
+  # The instance profile to be assumed by the instance
+  IamProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref IamRole
+      Path: "/"
+
+  # An EC2 Instance using the latest Amazon Linux 2 AMI
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestAmiId
+      SubnetId: !Ref Subnet
+      Monitoring: true
+      IamInstanceProfile: !Ref IamProfile
+      EbsOptimized: true
+      
+  # An Elastic IP address associated to an instance
+  Eip:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref Instance

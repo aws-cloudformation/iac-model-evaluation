@@ -1,0 +1,20 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This stack creates a SNS topic using KMS encryption\n",
+    "Parameters": {
+        "KmsKey": {
+            "Description": "The KMS key master ID",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "Topic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "KmsMasterKeyId": {
+                    "Ref": "KmsKey"
+                }
+            }
+        }
+    }
+}

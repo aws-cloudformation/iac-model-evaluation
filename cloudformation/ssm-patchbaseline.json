@@ -1,0 +1,97 @@
+{
+    "Parameters": {
+        "PatchGroups": {
+            "Type": "CommaDelimitedList"
+        }
+    },
+    "Resources": {
+        "PatchBaseLineWindows2019": {
+            "Type": "AWS::SSM::PatchBaseline",
+            "Properties": {
+                "Description": "Baseline containing all updates approved for Windows 2019 instances",
+                "OperatingSystem": "WINDOWS",
+                "PatchGroups": {
+                    "Ref": "PatchGroups"
+                },
+                "ApprovalRules": {
+                    "PatchRules": [
+                        {
+                            "PatchFilterGroup": {
+                                "PatchFilters": [
+                                    {
+                                        "Values": [
+                                            "Critical",
+                                            "Important",
+                                            "Moderate"
+                                        ],
+                                        "Key": "MSRC_SEVERITY"
+                                    },
+                                    {
+                                        "Values": [
+                                            "SecurityUpdates",
+                                            "CriticalUpdates"
+                                        ],
+                                        "Key": "CLASSIFICATION"
+                                    },
+                                    {
+                                        "Values": [
+                                            "WindowsServer2019"
+                                        ],
+                                        "Key": "PRODUCT"
+                                    }
+                                ]
+                            },
+                            "ApproveAfterDays": 7,
+                            "ComplianceLevel": "CRITICAL"
+                        }
+                    ]
+                }
+            }
+        },
+        "PatchBaselineAmazonLinux2": {
+            "Type": "AWS::SSM::PatchBaseline",
+            "Properties": {
+                "Description": "Baseline containing all updates approved for Amazon Linux 2",
+                "OperatingSystem": "AMAZON_LINUX_2",
+                "PatchGroups": {
+                    "Ref": "PatchGroups"
+                },
+                "ApprovalRules": {
+                    "PatchRules": [
+                        {
+                            "PatchFilterGroup": {
+                                "PatchFilters": [
+                                    {
+                                        "Values": [
+                                            "Critical",
+                                            "Important",
+                                            "Moderate"
+                                        ],
+                                        "Key": "MSRC_SEVERITY"
+                                    },
+                                    {
+                                        "Values": [
+                                            "Security",
+                                            "Enhancement"
+                                        ],
+                                        "Key": "CLASSIFICATION"
+                                    },
+                                    {
+                                        "Values": [
+                                            "AmazonLinux2",
+                                            "AmazonLinux2.0"
+                                        ],
+                                        "Key": "PRODUCT"
+                                    }
+                                ]
+                            },
+                            "ApproveAfterDays": 7,
+                            "ComplianceLevel": "CRITICAL",
+                            "EnableNonSecurity": false
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

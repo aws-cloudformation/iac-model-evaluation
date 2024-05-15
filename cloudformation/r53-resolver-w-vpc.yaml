@@ -1,0 +1,116 @@
+Description: |
+  Create a VPC with 2 subnets for Inbound and Outbound Route 53 Resolvers
+
+Resources:
+  # Create default tennacy VPC with DNS hostname and resolution support using RFC 1918 /24 subnet mask
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+
+  # Create Private subnet in 1st available AZ with the first /26 subnet mask of the VPC CIDR
+  VPCSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 0
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create Private subnet in 2nd available AZ with the second /26 subnet mask of the VPC CIDR
+  VPCSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 1
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create Security Group allowing TCP and UDP ports inbound and outbound. Outbound is allow to all IP space and inbound is restricted  to the VPC CIDR.
+  R53SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: R53-Outbound-Resolver-Security-Group
+      GroupName: R53-Outbound-Resolver-Security-Group
+      SecurityGroupEgress:
+        - Description: DNS Access
+          FromPort: 53
+          IpProtocol: udp
+          CidrIp: 0.0.0.0/0
+          ToPort: 53
+        - Description: DNS Access
+          FromPort: 53
+          IpProtocol: udp
+          CidrIp: 0.0.0.0/0
+          ToPort: 53
+      SecurityGroupIngress:
+        - Description: DNS
+          FromPort: 53
+          IpProtocol: tcp
+          CidrIp: !GetAtt VPC.CidrBlock
+          ToPort: 53
+        - Description: DNS
+          FromPort: 53
+          IpProtocol: udp
+          CidrIp: !GetAtt VPC.CidrBlock
+          ToPort: 53
+      VpcId: !Ref VPC
+
+  # Create R53 Outbound Resolver with auto-assigned IPs.
+  R53RROutbound:
+    Type: AWS::Route53Resolver::ResolverEndpoint
+    Properties:
+      Direction: OUTBOUND
+      IpAddresses:
+        - SubnetId: !Ref VPCSubnet1
+        - SubnetId: !Ref VPCSubnet2
+      Name: R53-Outbound-Resolver
+      SecurityGroupIds:
+        - !Ref R53SG
+
+  # Create R53 Inbound Resolver with auto-assigned IPs.
+  R53RInbound:
+    Type: AWS::Route53Resolver::ResolverEndpoint
+    Properties:
+      Direction: INBOUND
+      IpAddresses:
+        - SubnetId: !Ref VPCSubnet1
+        - SubnetId: !Ref VPCSubnet2
+      Name: R53-Inbound-Resolver
+      SecurityGroupIds:
+        - !Ref R53SG
+
+  # Create R53 Forward rule for aws.amazon.com targeting 10.0.0.10 associated with R53RInbound
+  RR53RuleMAD:
+    Type: AWS::Route53Resolver::ResolverRule
+    Properties:
+      Name: R53-Rule-Test
+      DomainName: "aws.amazon.com"
+      ResolverEndpointId: !Ref R53RROutbound
+      RuleType: FORWARD
+      TargetIps:
+        - Ip: 10.0.0.10
+
+  # Associate the R53 Rule with the VPC
+  RR53RRAssocMad:
+    Type: AWS::Route53Resolver::ResolverRuleAssociation
+    Properties:
+      ResolverRuleId: !Ref RR53RuleMAD
+      VPCId: !Ref VPC

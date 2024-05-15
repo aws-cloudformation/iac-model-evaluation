@@ -1,0 +1,215 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Create all resources associated with CloudWatch logs",
+    "Resources": {
+        "AccountPolicy": {
+            "Type": "AWS::Logs::AccountPolicy",
+            "Properties": {
+                "PolicyName": "account-policy",
+                "PolicyType": "DATA_PROTECTION_POLICY",
+                "PolicyDocument": "{}"
+            }
+        },
+        "Delivery": {
+            "Type": "AWS::Logs::Delivery",
+            "Properties": {
+                "DeliverySourceName": {
+                    "Ref": "DeliverySource"
+                },
+                "DeliveryDestinationArn": {
+                    "Fn::GetAtt": [
+                        "DeliveryDestination",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "DeliveryDestination": {
+            "Type": "AWS::Logs::DeliveryDestination",
+            "Properties": {
+                "Name": "delivery-dest"
+            }
+        },
+        "DeliverySource": {
+            "Type": "AWS::Logs::DeliverySource",
+            "Properties": {
+                "Name": "delivery-source"
+            }
+        },
+        "Destination": {
+            "Type": "AWS::Logs::Destination",
+            "Properties": {
+                "DestinationName": "dest1",
+                "TargetArn": "STRING",
+                "RoleArn": "STRING"
+            }
+        },
+        "LogAnomalyDetector": {
+            "Type": "AWS::Logs::LogAnomalyDetector",
+            "Properties": {
+                "AnomalyVisibilityTime": 30,
+                "EvaluationFrequency": "ONE_HOUR",
+                "LogGroupArnList": [
+                    {
+                        "Fn::GetAtt": [
+                            "LogGroup",
+                            "Arn"
+                        ]
+                    }
+                ]
+            }
+        },
+        "LogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupName": "my-log-group-1"
+            }
+        },
+        "LogStream": {
+            "Type": "AWS::Logs::LogStream",
+            "Properties": {
+                "LogGroupName": {
+                    "Ref": "LogGroup"
+                }
+            }
+        },
+        "MetricFilter": {
+            "Type": "AWS::Logs::MetricFilter",
+            "Properties": {
+                "LogGroupName": {
+                    "Ref": "LogGroup"
+                },
+                "FilterPattern": "[..., maxMemoryLabel=\"Used:\", maxMemory, maxMemoryUnit=GB]",
+                "MetricTransformations": [
+                    {
+                        "MetricValue": "$maxMemory",
+                        "MetricNamespace": "lambda-function",
+                        "MetricName": "MaxMemoryUsedGB"
+                    }
+                ]
+            }
+        },
+        "QueryDefinition": {
+            "Type": "AWS::Logs::QueryDefinition",
+            "Properties": {
+                "Name": "query-1",
+                "QueryString": "@timestamp"
+            }
+        },
+        "ResourcePolicy": {
+            "Type": "AWS::Logs::ResourcePolicy",
+            "Properties": {
+                "PolicyName": "resource-policy-1",
+                "PolicyDocument": "{}"
+            }
+        },
+        "SubscriptionFilter": {
+            "Type": "AWS::Logs::SubscriptionFilter",
+            "Properties": {
+                "DestinationArn": "STRING",
+                "FilterPattern": "STRING",
+                "LogGroupName": {
+                    "Ref": "LogGroup"
+                }
+            }
+        },
+        "DurationAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmName": "lambda-alarm",
+                "AlarmDescription": "Alarm if function duration goes over 5s",
+                "MetricName": "Duration",
+                "Namespace": "AWS/Lambda",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": "my-function"
+                    }
+                ],
+                "Statistic": "Average",
+                "Period": 600,
+                "EvaluationPeriods": 1,
+                "Threshold": 5000,
+                "ComparisonOperator": "GreaterThanThreshold"
+            }
+        },
+        "ErrorAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmName": "FiveErrors",
+                "AlarmDescription": "Alarm if we see 5 errors in 5 minutes",
+                "MetricName": "Errors",
+                "Namespace": "AWS/Lambda",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": "my-function"
+                    }
+                ],
+                "Statistic": "Sum",
+                "Period": 300,
+                "EvaluationPeriods": 1,
+                "Threshold": 0,
+                "ComparisonOperator": "GreaterThanThreshold"
+            }
+        },
+        "AnomalyDetector": {
+            "Type": "AWS::CloudWatch::AnomalyDetector",
+            "Properties": {
+                "MetricName": "Errors",
+                "Namespace": "AWS/Lambda",
+                "Stat": "Sum",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": "my-function"
+                    }
+                ]
+            }
+        },
+        "CompositeAlarm": {
+            "Type": "AWS::CloudWatch::CompositeAlarm",
+            "Properties": {
+                "AlarmRule": {
+                    "Fn::Sub": "ALARM(${ErrorAlarm}) AND ALARM(${DurationAlarm})"
+                },
+                "AlarmActions": [
+                    {
+                        "Fn::Sub": "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:my-alarm-topic"
+                    }
+                ]
+            }
+        },
+        "Dashboard": {
+            "Type": "AWS::CloudWatch::Dashboard",
+            "Properties": {
+                "DashboardName": "my-dashboard",
+                "DashboardBody": {
+                    "Fn::Sub": "{\n  \"widgets\": [\n    {\n      \"type\": \"metric\",\n      \"x\": 0,\n      \"y\": 0,\n      \"width\": 20,\n      \"height\": 10,\n      \"properties\": {\n        \"view\": \"timeSeries\",\n        \"stacked\": false,\n        \"metrics\": [\n          [\"AWS/Lambda\", \"Invocations\", \"FunctionName\", \"my-function\", {\n            \"period\": 3000,\n            \"stat\": \"Sum\"\n          }]\n        ],\n        \"region\": \"${AWS::Region}\",\n        \"yAxis\": {\n          \"left\": {\n            \"min\": 0\n          }\n        }\n      }\n    }\n  ]\n}\n"
+                }
+            }
+        },
+        "InsightRule": {
+            "Type": "AWS::CloudWatch::InsightRule",
+            "Properties": {
+                "RuleState": "ENABLED",
+                "RuleBody": {
+                    "Fn::Sub": "{\n  \"Schema\": {\n      \"Name\": \"CloudWatchLogRule\",\n      \"Version\": 1\n  },\n  \"LogGroupNames\": [\n    \"${LogGroup}\"\n  ],\n  \"LogFormat\": \"JSON\",\n  \"Contribution\": {\n      \"Keys\": [\n          \"$.ip\"\n      ],\n      \"ValueOf\": \"$.requestBytes\",\n      \"Filters\": [\n          {\n              \"Match\": \"$.httpMethod\",\n              \"In\": [\n                  \"PUT\"\n              ]\n          }\n      ]\n  },\n  \"AggregateOn\": \"Sum\"\n}\n"
+                },
+                "RuleName": "rule-1"
+            }
+        },
+        "MetricStream": {
+            "Type": "AWS::CloudWatch::MetricStream",
+            "Properties": {
+                "FirehoseArn": {
+                    "Fn::Sub": "arn:aws:firehose:${AWS::Region}:${AWS::AccountId}:deliverystream/name"
+                },
+                "RoleArn": {
+                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/roleName"
+                },
+                "OutputFormat": "json"
+            }
+        }
+    }
+}

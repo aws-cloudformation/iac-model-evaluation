@@ -1,0 +1,48 @@
+{
+    "Description": "Create a CloudTrail trail to log events to a specified bucket\n",
+    "Parameters": {
+        "BucketName": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "Trail": {
+            "Type": "AWS::CloudTrail::Trail",
+            "Metadata": {
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_35"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "CLOUD_TRAIL_ENCRYPTION_ENABLED",
+                        "CLOUD_TRAIL_CLOUD_WATCH_LOGS_ENABLED",
+                        "CLOUDTRAIL_S3_DATAEVENTS_ENABLED"
+                    ]
+                }
+            },
+            "Properties": {
+                "S3BucketName": {
+                    "Ref": "BucketName"
+                },
+                "IsLogging": true,
+                "IsMultiRegionTrail": true,
+                "EnableLogFileValidation": true
+            }
+        }
+    },
+    "Outputs": {
+        "ARN": {
+            "Description": "The trail ARN",
+            "Value": {
+                "Fn::GetAtt": [
+                    "Trail",
+                    "Arn"
+                ]
+            }
+        }
+    }
+}

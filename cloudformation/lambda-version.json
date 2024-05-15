@@ -1,0 +1,79 @@
+{
+    "Description": "This template will create a lambda function and an associated lambda\nversion\n",
+    "Resources": {
+        "LambdaRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "LambdaRole",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                }
+            }
+        },
+        "Function": {
+            "Type": "AWS::Lambda::Function",
+            "Metadata": {
+                "Comment": "A lambda function that implements REST API endpoints",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_116",
+                            "comment": "This function is not called async"
+                        },
+                        {
+                            "id": "CKV_AWS_117",
+                            "comment": "This example does not run in a VPC"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_DLQ_CHECK"
+                    ],
+                    "Comments": [
+                        "This example does not run in a VPC",
+                        "The function is not called async so a DLQ is not necessary"
+                    ]
+                }
+            },
+            "Properties": {
+                "Handler": "index.handler",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaRole",
+                        "Arn"
+                    ]
+                },
+                "ReservedConcurrentExecutions": 20,
+                "Code": {
+                    "ZipFile": "def handler(event, context):\n  return 'Hello World!'\n"
+                },
+                "Runtime": "python3.10",
+                "TracingConfig": {
+                    "Mode": "Active"
+                }
+            }
+        },
+        "Version": {
+            "Type": "AWS::Lambda::Version",
+            "Properties": {
+                "FunctionName": {
+                    "Ref": "Function"
+                },
+                "Description": "v1",
+                "ProvisionedConcurrencyConfig": {
+                    "ProvisionedConcurrentExecutions": 20
+                }
+            }
+        }
+    }
+}

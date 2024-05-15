@@ -1,0 +1,54 @@
+Description: |
+  This stack will create different event bus policies
+
+Parameters:
+  OrganizationId:
+    Type: String
+
+Resources:
+  # An event bus policy that allows the organization to put events into the default bus
+  OrganizationEventBusPolicy:
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      StatementId: OrganizationalPut
+      Statement:
+        Effect: Allow
+        Principal: "*"
+        Action: events:PutEvents
+        Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default"
+        Condition:
+          StringEquals:
+            "aws:PrincipalOrgID": !Ref OrganizationId
+
+  # An event bus policy that allows the account to put events
+  OneAccountEventBusPolicy:
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      StatementId: OneAccountPut
+      Statement:
+        Effect: Allow
+        Principal:
+          AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+        Action: events:PutEvents
+        Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default"
+
+  # Create a custom event bus
+  CustomEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: OrganizationalEventBus
+
+  # An event bus policy that allows the organization to put events into a custom event bus
+  OrganizationEventBusPolicyCustomBus:
+    Type: AWS::Events::EventBusPolicy
+    Properties:
+      EventBusName: !Ref CustomEventBus
+      StatementId: OrganizationalPutCustomBus
+      Statement:
+        Effect: Allow
+        Principal: "*"
+        Action: events:PutEvents
+        Resource: !GetAtt CustomEventBus.Arn
+        Condition:
+          StringEquals:
+            "aws:PrincipalOrgID": !Ref OrganizationId

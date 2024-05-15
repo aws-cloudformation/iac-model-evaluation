@@ -1,0 +1,33 @@
+{
+    "Description": "This stack automates the creation of EC2 DHCP options\n",
+    "Conditions": {
+        "IsUsEast1": {
+            "Fn::Equals": [
+                {
+                    "Ref": "AWS::Region"
+                },
+                "us-east-1"
+            ]
+        }
+    },
+    "Resources": {
+        "IamRole": {
+            "Type": "AWS::EC2::DHCPOptions",
+            "Properties": {
+                "DomainName": {
+                    "Fn::If": [
+                        "IsUsEast1",
+                        "ec2.internal",
+                        {
+                            "Fn::Sub": "${AWS::Region}.compute.internal"
+                        }
+                    ]
+                },
+                "DomainNameServers": [
+                    "AmazonProvidedDNS"
+                ],
+                "NetbiosNodeType": 2
+            }
+        }
+    }
+}

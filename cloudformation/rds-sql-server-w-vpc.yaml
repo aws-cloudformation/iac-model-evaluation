@@ -1,0 +1,148 @@
+Description: |
+  Create a VPC with 2 subnets for the Amazon Amazon for RDS SQL Server instance with a password stored in secerets manager
+
+Resources:
+  # Create default tennacy VPC with DNS hostname and resolution support using RFC 1918 /24 subnet mask
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+
+  # Create Private subnet in 1st available AZ with the first /26 subnet mask of the VPC CIDR
+  VPCSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 0
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create Private subnet in 2nd available AZ with the second /26 subnet mask of the VPC CIDR
+  VPCSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 1
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create Security Group for RDS Database Instance allowing TCP 1433 inbound from the VPC CIDR and all traffic outbound
+  RdsSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS-Security-Group
+      GroupName: RDS-Security-Group
+      SecurityGroupEgress:
+        - Description: All Outbound Traffic
+          FromPort: -1
+          IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          ToPort: -1
+      SecurityGroupIngress:
+        - Description: SQL Access
+          FromPort: 1433
+          IpProtocol: tcp
+          CidrIp: !GetAtt VPC.CidrBlock
+          ToPort: 1433
+      VpcId: !Ref VPC
+
+  # Create Subnet Group for RDS Database Instance
+  RdsDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: RDS-Subnet-Group
+      DBSubnetGroupName: RDS-Subnet-Group
+      SubnetIds:
+        - !Ref VPCSubnet1
+        - !Ref VPCSubnet2
+  
+  # IAM Role for RDS enhanced monitoring
+  RDSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - monitoring.rds.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole
+      Path: /
+      RoleName: "RDS-Enhanced-Monitoring-Role"
+
+  RDSKey:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: An example symmetric encryption KMS key
+      EnableKeyRotation: true
+      PendingWindowInDays: 20
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-default-1
+        Statement:  
+          - Effect: Allow
+            Resource: "*"
+            Action: "kms:*"
+            Principal: 
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+
+  # Create Amazon for RDS SQL Server Standard Edition single az instance with 20 GiB GP3 storage
+  RdsDB:
+    Type: AWS::RDS::DBInstance
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E2521
+            - E3002
+    Properties:
+      AllocatedStorage: 20
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 5
+      DBInstanceClass: db.t3.xlarge
+      DBInstanceIdentifier: RDS
+      DBSubnetGroupName: !Ref RdsDBSubnetGroup
+      DeleteAutomatedBackups: true
+      DeletionProtection: true
+      EnableCloudwatchLogsExports:
+        - agent
+        - error
+      EnablePerformanceInsights: true
+      Engine: sqlserver-se
+      EngineVersion: 15.00.4198.2.v1
+      LicenseModel: license-included
+      KmsKeyId: alias/aws/rds
+      ManageMasterUserPassword: true
+      MasterUsername: 'admin'
+      MasterUserSecret:
+        KmsKeyId: !Ref RDSKey
+      MonitoringInterval: 5
+      MonitoringRoleArn: !GetAtt RDSRole.Arn
+      MultiAZ: true
+      PerformanceInsightsKMSKeyId: alias/aws/rds
+      PerformanceInsightsRetentionPeriod: 7
+      PubliclyAccessible: false
+      StorageEncrypted: true
+      StorageType: gp3
+      VPCSecurityGroups:
+        - !Ref RdsSG

@@ -1,0 +1,26 @@
+{
+  "name": "sns-topic",
+  "version": "0.1.0",
+  "bin": {
+    "sns-topic": "bin/sns-topic.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/node": "20.1.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "aws-cdk": "2.87.0",
+    "eslint": "^8.44.0",
+    "ts-node": "^10.9.1",
+    "typescript": "~5.1.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.87.0",
+    "constructs": "^10.0.0",
+    "source-map-support": "^0.5.21"
+  }
+}

@@ -1,0 +1,417 @@
+{
+    "Description": "This template deploys a Lambda function and an API Gateway to implement \na basic REST API.\n",
+    "Parameters": {
+        "ResourceNamePrefix": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "RestFunction": {
+            "Type": "AWS::Lambda::Function",
+            "DependsOn": "RestFunctionLogGroup",
+            "Metadata": {
+                "Comment": "A lambda function that implements REST API endpoints",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_116",
+                            "comment": "This function is not called async"
+                        },
+                        {
+                            "id": "CKV_AWS_117",
+                            "comment": "This example does not run in a VPC"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "LAMBDA_INSIDE_VPC",
+                        "LAMBDA_DLQ_CHECK"
+                    ],
+                    "Comments": [
+                        "This example does not run in a VPC",
+                        "The function is not called async so a DLQ is not necessary"
+                    ]
+                }
+            },
+            "Properties": {
+                "FunctionName": {
+                    "Fn::Sub": "${ResourceNamePrefix}-rest-api"
+                },
+                "Runtime": "python3.9",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "RestFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Handler": "index.handler",
+                "ReservedConcurrentExecutions": 100,
+                "Code": {
+                    "ZipFile": "import boto3\nimport json\ndef handler(event, context):\n  print(event)\n  return {\n      \"statusCode\": 200,\n      \"body\": json.dumps('Success')\n  }\n"
+                }
+            }
+        },
+        "RestFunctionLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Metadata": {
+                "Comment": "A log group for the rest api function",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_158",
+                            "commment": "Log groups are encrypted by default"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "CLOUDWATCH_LOG_GROUP_ENCRYPTED"
+                    ],
+                    "Comments": [
+                        "CloudWatch log groups are encrypted by default"
+                    ]
+                }
+            },
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/lambda/${ResourceNamePrefix}-rest-api"
+                },
+                "RetentionInDays": 90
+            }
+        },
+        "RestApiAccessLog": {
+            "Type": "AWS::Logs::LogGroup",
+            "Metadata": {
+                "Comment": "A log group for the rest api function access logs",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_158",
+                            "commment": "Log groups are encrypted by default"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "CLOUDWATCH_LOG_GROUP_ENCRYPTED"
+                    ],
+                    "Comments": [
+                        "CloudWatch log groups are encrypted by default"
+                    ]
+                }
+            },
+            "Properties": {
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/lambda/${ResourceNamePrefix}-rest-api-access"
+                },
+                "RetentionInDays": 90
+            }
+        },
+        "RestFunctionPolicy": {
+            "Type": "AWS::IAM::Policy",
+            "DependsOn": "RestFunctionRole",
+            "Metadata": {
+                "Comment": "A policy for the REST API Lambda function role"
+            },
+            "Properties": {
+                "PolicyName": "lambdaexec",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourceNamePrefix}-rest-api"
+                                },
+                                {
+                                    "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourceNamePrefix}-rest-api:*"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Fn::Sub": "${ResourceNamePrefix}-lambda-exec"
+                    }
+                ]
+            }
+        },
+        "RestFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "Comment": "An execution role for the REST API Lambda function"
+            },
+            "Properties": {
+                "RoleName": {
+                    "Fn::Sub": "${ResourceNamePrefix}-lambda-exec"
+                },
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AWSLambdaExecute"
+                ],
+                "Path": "/"
+            }
+        },
+        "RestApi": {
+            "Type": "AWS::ApiGateway::RestApi",
+            "Metadata": {
+                "Comment": "An API Gateway REST API"
+            },
+            "Properties": {
+                "Name": {
+                    "Fn::Sub": "${ResourceNamePrefix}-api"
+                }
+            }
+        },
+        "RestApiCloudWatchPolicy": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::IAM::Policy",
+            "Metadata": {
+                "Comment": "A policy that allows the API Gateway REST API to log to CloudWatch.\nNote that we have to use a * for the resource here because this policy \nis attached to a role that is actually a singleton for all gateways \nin the region. Configuring the ::Account resource overwrites the role \nfor any previosly configured gateways.\n",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_111",
+                            "comment": "This policy is a singleton for all gateways, so it needs access to all logs"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "PolicyName": "cwlogsapigateway",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:DescribeLogGroups",
+                                "logs:DescribeLogStreams",
+                                "logs:PutLogEvents",
+                                "logs:GetLogEvents",
+                                "logs:FilterLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        }
+                    ]
+                },
+                "Roles": [
+                    {
+                        "Ref": "RestApiCloudWatchRole"
+                    }
+                ]
+            }
+        },
+        "RestApiCloudWatchRole": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::IAM::Role",
+            "Metadata": {
+                "Comment": "A role that allows the API Gateway REST API to log to CloudWatch.\nWe set this to retain to prevent an issue with the Account resource \nbeing a singleton that could result in the role being deleted for\na separately configured API. Ideally this role would be created \nseparately and referenced from this template and others like it.\n"
+            },
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "apigateway.amazonaws.com",
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "RestApiAccount": {
+            "Type": "AWS::ApiGateway::Account",
+            "DependsOn": [
+                "RestApi",
+                "RestApiCloudWatchRole",
+                "RestApiCloudWatchPolicy"
+            ],
+            "Metadata": {
+                "Comment": "This is the API Gateway account resource to associate the role with the logs.\nThere is a gotcha with this resource since it's actually a singleton for all\ngateways in the account and region. The role will overwrite the role for all \nother gateways, and deleting it will delete it for the others, unless you \nput a retention policy on the role. The redundant DependsOn is required to \nprevent a race condition that causes an error when deploying the stack.\n",
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "W3005"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "CloudWatchRoleArn": {
+                    "Fn::GetAtt": [
+                        "RestApiCloudWatchRole",
+                        "Arn"
+                    ]
+                }
+            }
+        },
+        "RestApiDeployment": {
+            "Type": "AWS::ApiGateway::Deployment",
+            "DependsOn": [
+                "RestApiANYProxy",
+                "RestApiANYRoot"
+            ],
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestApi"
+                }
+            }
+        },
+        "RestApiStage": {
+            "Type": "AWS::ApiGateway::Stage",
+            "Metadata": {
+                "Comment": "The API Gateway stage resource",
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_120",
+                            "comment": "Caching is not always needed and can increase costs"
+                        }
+                    ]
+                }
+            },
+            "Properties": {
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "DeploymentId": {
+                    "Ref": "RestApiDeployment"
+                },
+                "StageName": "prod",
+                "TracingEnabled": true,
+                "AccessLogSetting": {
+                    "DestinationArn": {
+                        "Fn::GetAtt": [
+                            "RestApiAccessLog",
+                            "Arn"
+                        ]
+                    },
+                    "Format": "$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] $context.httpMethod $context.resourcePath $context.protocol $context.status $context.responseLength $context.requestId $context.extendedRequestId"
+                }
+            }
+        },
+        "RestApiProxy": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+                "ParentId": {
+                    "Fn::GetAtt": [
+                        "RestApi",
+                        "RootResourceId"
+                    ]
+                },
+                "PathPart": "{proxy+}",
+                "RestApiId": {
+                    "Ref": "RestApi"
+                }
+            }
+        },
+        "RestApiPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "RestFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/*"
+                }
+            }
+        },
+        "RestApiRootPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "RestFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                    "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/"
+                }
+            }
+        },
+        "RestApiANYRoot": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "ANY",
+                "ResourceId": {
+                    "Fn::GetAtt": [
+                        "RestApi",
+                        "RootResourceId"
+                    ]
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "AWS_IAM",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RestFunction.Arn}/invocations"
+                    }
+                }
+            }
+        },
+        "RestApiANYProxy": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+                "HttpMethod": "ANY",
+                "ResourceId": {
+                    "Ref": "RestApiProxy"
+                },
+                "RestApiId": {
+                    "Ref": "RestApi"
+                },
+                "AuthorizationType": "AWS_IAM",
+                "Integration": {
+                    "IntegrationHttpMethod": "POST",
+                    "Type": "AWS_PROXY",
+                    "Uri": {
+                        "Fn::Sub": "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RestFunction.Arn}/invocations"
+                    }
+                }
+            }
+        }
+    }
+}

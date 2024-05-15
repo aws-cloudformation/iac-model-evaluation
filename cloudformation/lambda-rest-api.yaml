@@ -1,0 +1,292 @@
+Description: |
+  This template deploys a Lambda function and an API Gateway to implement 
+  a basic REST API.
+
+Parameters:
+
+  ResourceNamePrefix:
+    Type: String
+
+Resources:
+
+  # A Lambda function that implements the REST API endpoints
+  RestFunction:
+    Metadata:
+      Comment: A lambda function that implements REST API endpoints
+      checkov:
+        skip:
+          - id: CKV_AWS_116
+            comment: This function is not called async
+          - id: CKV_AWS_117
+            comment: This example does not run in a VPC
+      guard:
+        SuppressedRules:
+          - LAMBDA_INSIDE_VPC
+          - LAMBDA_DLQ_CHECK
+        Comments:
+          - This example does not run in a VPC
+          - The function is not called async so a DLQ is not necessary
+    Type: AWS::Lambda::Function
+    DependsOn: RestFunctionLogGroup
+    Properties:
+      FunctionName: !Sub "${ResourceNamePrefix}-rest-api"
+      Runtime: python3.9
+      Role: !GetAtt RestFunctionRole.Arn
+      Handler: index.handler
+      ReservedConcurrentExecutions: 100
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          def handler(event, context):
+            print(event)
+            return {
+                "statusCode": 200,
+                "body": json.dumps('Success')
+            }
+
+  # A log group for the REST API Lambda function, created with a 90 day retention
+  RestFunctionLogGroup:
+    Metadata:
+      Comment: A log group for the rest api function
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            commment: Log groups are encrypted by default
+      guard:
+        SuppressedRules:
+          - CLOUDWATCH_LOG_GROUP_ENCRYPTED
+        Comments:
+          - CloudWatch log groups are encrypted by default
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ResourceNamePrefix}-rest-api"
+      RetentionInDays: 90
+
+  # A log group for the rest api function access logs
+  RestApiAccessLog:
+    Metadata:
+      Comment: A log group for the rest api function access logs
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            commment: Log groups are encrypted by default
+      guard:
+        SuppressedRules:
+          - CLOUDWATCH_LOG_GROUP_ENCRYPTED
+        Comments:
+          - CloudWatch log groups are encrypted by default
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ResourceNamePrefix}-rest-api-access"
+      RetentionInDays: 90
+
+  # A policy for the REST API Lambda function role
+  RestFunctionPolicy:
+    Metadata:
+      Comment: A policy for the REST API Lambda function role
+    Type: AWS::IAM::Policy
+    DependsOn: RestFunctionRole
+    Properties:
+      PolicyName: lambdaexec
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Effect: Allow
+            Resource: 
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourceNamePrefix}-rest-api"
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ResourceNamePrefix}-rest-api:*"
+      Roles: 
+        - !Sub "${ResourceNamePrefix}-lambda-exec"
+
+  # An execution role for the REST API Lambda function
+  RestFunctionRole:
+    Metadata:
+      Comment: An execution role for the REST API Lambda function
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ResourceNamePrefix}-lambda-exec"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+      Path: /
+
+  # An API Gateway REST API
+  RestApi:
+    Metadata:
+      Comment: An API Gateway REST API
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: !Sub "${ResourceNamePrefix}-api"
+
+  RestApiCloudWatchPolicy:
+    Metadata:
+      Comment: |
+        A policy that allows the API Gateway REST API to log to CloudWatch.
+        Note that we have to use a * for the resource here because this policy 
+        is attached to a role that is actually a singleton for all gateways 
+        in the region. Configuring the ::Account resource overwrites the role 
+        for any previosly configured gateways.
+      checkov:
+        skip:
+          - id: CKV_AWS_111
+            comment: This policy is a singleton for all gateways, so it needs access to all logs
+    Type: AWS::IAM::Policy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PolicyName: cwlogsapigateway
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:DescribeLogGroups
+              - logs:DescribeLogStreams
+              - logs:PutLogEvents
+              - logs:GetLogEvents
+              - logs:FilterLogEvents
+            Effect: Allow
+            Resource: "*"
+      Roles:
+        - !Ref RestApiCloudWatchRole
+
+  # A role that allows the API Gateway REST API to log to CloudWatch
+  RestApiCloudWatchRole:
+    Metadata:
+      Comment: | 
+        A role that allows the API Gateway REST API to log to CloudWatch.
+        We set this to retain to prevent an issue with the Account resource 
+        being a singleton that could result in the role being deleted for
+        a separately configured API. Ideally this role would be created 
+        separately and referenced from this template and others like it.
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: 
+                - apigateway.amazonaws.com
+                - lambda.amazonaws.com
+      Path: /
+
+  # The API Gateway account resource to associate the role with the logs
+  RestApiAccount:
+    Metadata:
+      Comment: |
+        This is the API Gateway account resource to associate the role with the logs.
+        There is a gotcha with this resource since it's actually a singleton for all
+        gateways in the account and region. The role will overwrite the role for all 
+        other gateways, and deleting it will delete it for the others, unless you 
+        put a retention policy on the role. The redundant DependsOn is required to 
+        prevent a race condition that causes an error when deploying the stack.
+      cfn-lint:
+        config:
+          ignore_checks:
+            - W3005
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt RestApiCloudWatchRole.Arn
+    DependsOn: 
+      - RestApi
+      - RestApiCloudWatchRole
+      - RestApiCloudWatchPolicy
+
+  # The API Gateway deployment resource
+  RestApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RestApi
+    DependsOn:
+      - RestApiANYProxy
+      - RestApiANYRoot
+
+
+# CLF
+
+  # The API Gateway stage resource
+  RestApiStage:
+    Metadata:
+      Comment: The API Gateway stage resource
+      checkov:
+        skip:
+          - id: CKV_AWS_120
+            comment: Caching is not always needed and can increase costs
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId: !Ref RestApi
+      DeploymentId: !Ref RestApiDeployment
+      StageName: prod
+      TracingEnabled: true
+      AccessLogSetting:
+        DestinationArn: !GetAtt RestApiAccessLog.Arn
+        Format: "$context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] $context.httpMethod $context.resourcePath $context.protocol $context.status $context.responseLength $context.requestId $context.extendedRequestId"
+
+  # The API Gateway proxy resource
+  RestApiProxy:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt RestApi.RootResourceId
+      PathPart: "{proxy+}"
+      RestApiId: !Ref RestApi
+
+  # Permission for the API Gateway REST API to invoke Lambda
+  RestApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt RestFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/*" 
+
+  # Root level permission for the API Gateway REST API to invoke lambda
+  RestApiRootPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt RestFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${RestApi}/*/*/" 
+
+  # The root method for the API Gateway REST API
+  RestApiANYRoot:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: ANY
+      ResourceId: !GetAtt RestApi.RootResourceId
+      RestApiId: !Ref RestApi
+      AuthorizationType: AWS_IAM
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RestFunction.Arn}/invocations"
+
+  # The ANY proxy for the API Gateway REST API
+  RestApiANYProxy:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: ANY
+      ResourceId: !Ref RestApiProxy
+      RestApiId: !Ref RestApi
+      AuthorizationType: AWS_IAM
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RestFunction.Arn}/invocations"
+
