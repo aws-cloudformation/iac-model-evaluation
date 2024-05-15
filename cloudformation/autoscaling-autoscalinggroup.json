@@ -1,0 +1,77 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This stack automates the creation of an AWS Auto Scaling group\nusing the latest EC2 AMI image using Amazon Linux 2. It also creates\nthe related resources like a launch template and security groups\n",
+    "Parameters": {
+        "LatestAmiId": {
+            "Description": "Region specific image from the Parameter Store",
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+        },
+        "VpcId": {
+            "Description": "A VPC ID for the security group",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "Subnets": {
+            "Description": "A list of subnets for the Auto Scaling group",
+            "Type": "List<AWS::EC2::Subnet::Id>"
+        }
+    },
+    "Resources": {
+        "SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Auto scaling group security group",
+                "VpcId": {
+                    "Ref": "VpcId"
+                }
+            }
+        },
+        "LaunchTemplate": {
+            "Type": "AWS::EC2::LaunchTemplate",
+            "Properties": {
+                "LaunchTemplateName": {
+                    "Fn::Sub": "${AWS::StackName}-launch-template"
+                },
+                "LaunchTemplateData": {
+                    "ImageId": {
+                        "Ref": "LatestAmiId"
+                    },
+                    "InstanceType": "t3.micro",
+                    "SecurityGroupIds": [
+                        {
+                            "Fn::GetAtt": [
+                                "SecurityGroup",
+                                "GroupId"
+                            ]
+                        }
+                    ],
+                    "MetadataOptions": {
+                        "HttpEndpoint": "disabled"
+                    }
+                }
+            }
+        },
+        "AutoScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "LaunchTemplate": {
+                    "LaunchTemplateId": {
+                        "Ref": "LaunchTemplate"
+                    },
+                    "Version": {
+                        "Fn::GetAtt": [
+                            "LaunchTemplate",
+                            "LatestVersionNumber"
+                        ]
+                    }
+                },
+                "MaxSize": "1",
+                "MinSize": "0",
+                "DesiredCapacity": "1",
+                "VPCZoneIdentifier": {
+                    "Ref": "Subnets"
+                }
+            }
+        }
+    }
+}

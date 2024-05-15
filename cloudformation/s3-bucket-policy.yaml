@@ -1,0 +1,51 @@
+Description: |
+  This template creates a S3 bucket policy
+
+Resources:
+  # An S3 Bucket
+  Bucket:
+    Type: AWS::S3::Bucket
+    Metadata:
+      Comment: A simple bucket policy that passes security scanner checks
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: We don't need logging on this bucket
+          - id: CKV_AWS_21
+            comment: We don't need bucket versioning on this bucket
+      guard:
+        SuppressedRules:
+          - S3_BUCKET_DEFAULT_LOCK_ENABLED
+          - S3_BUCKET_REPLICATION_ENABLED
+          - S3_BUCKET_LOGGING_ENABLED
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      VersioningConfiguration:
+        Status: Enabled
+
+  # An S3 bucket policy that uses ssl
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Bucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowSSLRequestsOnly
+            Action: s3:*
+            Effect: Deny
+            Resource:
+              - !GetAtt Bucket.Arn
+              - !Sub "${Bucket.Arn}/*"
+            Principal: "*"
+            Condition:
+              Bool:
+                "aws:SecureTransport": false

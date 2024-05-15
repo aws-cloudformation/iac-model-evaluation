@@ -1,0 +1,82 @@
+{
+    "Description": "This stack will create different event bus policies\n",
+    "Parameters": {
+        "OrganizationId": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "OrganizationEventBusPolicy": {
+            "Type": "AWS::Events::EventBusPolicy",
+            "Properties": {
+                "StatementId": "OrganizationalPut",
+                "Statement": {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "events:PutEvents",
+                    "Resource": {
+                        "Fn::Sub": "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default"
+                    },
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:PrincipalOrgID": {
+                                "Ref": "OrganizationId"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "OneAccountEventBusPolicy": {
+            "Type": "AWS::Events::EventBusPolicy",
+            "Properties": {
+                "StatementId": "OneAccountPut",
+                "Statement": {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "AWS": {
+                            "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                        }
+                    },
+                    "Action": "events:PutEvents",
+                    "Resource": {
+                        "Fn::Sub": "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/default"
+                    }
+                }
+            }
+        },
+        "CustomEventBus": {
+            "Type": "AWS::Events::EventBus",
+            "Properties": {
+                "Name": "OrganizationalEventBus"
+            }
+        },
+        "OrganizationEventBusPolicyCustomBus": {
+            "Type": "AWS::Events::EventBusPolicy",
+            "Properties": {
+                "EventBusName": {
+                    "Ref": "CustomEventBus"
+                },
+                "StatementId": "OrganizationalPutCustomBus",
+                "Statement": {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "events:PutEvents",
+                    "Resource": {
+                        "Fn::GetAtt": [
+                            "CustomEventBus",
+                            "Arn"
+                        ]
+                    },
+                    "Condition": {
+                        "StringEquals": {
+                            "aws:PrincipalOrgID": {
+                                "Ref": "OrganizationId"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

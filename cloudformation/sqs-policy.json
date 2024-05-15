@@ -1,0 +1,66 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This stack creates a SQS queue using KMS encryption\nwith a SQS policy allowing the account that the \nqueue is deployed into the ability to read and write\nfrom the queue\n",
+    "Parameters": {
+        "KmsKey": {
+            "Description": "The KMS key master ID",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "Queue": {
+            "DeletionPolicy": "Retain",
+            "UpdateReplacePolicy": "Retain",
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+                "DelaySeconds": 0,
+                "FifoQueue": false,
+                "KmsDataKeyReusePeriodSeconds": 300,
+                "KmsMasterKeyId": {
+                    "Ref": "KmsKey"
+                },
+                "MaximumMessageSize": 262144,
+                "MessageRetentionPeriod": 345600,
+                "ReceiveMessageWaitTimeSeconds": 0,
+                "VisibilityTimeout": 30
+            }
+        },
+        "QueuePolicy": {
+            "Type": "AWS::SQS::QueuePolicy",
+            "Properties": {
+                "Queues": [
+                    {
+                        "Fn::GetAtt": [
+                            "Queue",
+                            "QueueUrl"
+                        ]
+                    }
+                ],
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "SQS:SendMessage",
+                                "SQS:ReceiveMessage"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": {
+                                "Fn::GetAtt": [
+                                    "Queue",
+                                    "Arn"
+                                ]
+                            },
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+}

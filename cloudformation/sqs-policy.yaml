@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  This stack creates a SQS queue using KMS encryption
+  with a SQS policy allowing the account that the 
+  queue is deployed into the ability to read and write
+  from the queue
+
+Parameters:
+  KmsKey:
+    Description: The KMS key master ID
+    Type: String
+
+Resources:
+  # An SQS queue
+  Queue:
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    Type: AWS::SQS::Queue
+    Properties:
+      DelaySeconds: 0
+      FifoQueue: false
+      KmsDataKeyReusePeriodSeconds: 300
+      KmsMasterKeyId: !Ref KmsKey
+      MaximumMessageSize: 262144
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 0
+      VisibilityTimeout: 30
+
+  # An SQS queue policy for the account to read/write from the queue
+  QueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !GetAtt Queue.QueueUrl
+      PolicyDocument:
+        Statement:
+          - Action:
+              - SQS:SendMessage
+              - SQS:ReceiveMessage
+            Effect: Allow
+            Resource: !GetAtt Queue.Arn
+            Principal:
+              AWS:
+                - !Ref AWS::AccountId

@@ -1,0 +1,243 @@
+{
+    "Description": "Create a VPC with 2 subnets for the Amazon Amazon for RDS SQL Server instance with a password stored in secerets manager\n",
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default"
+            }
+        },
+        "VPCSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "VPCSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "RdsSG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "RDS-Security-Group",
+                "GroupName": "RDS-Security-Group",
+                "SecurityGroupEgress": [
+                    {
+                        "Description": "All Outbound Traffic",
+                        "FromPort": -1,
+                        "IpProtocol": "-1",
+                        "CidrIp": "0.0.0.0/0",
+                        "ToPort": -1
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "Description": "SQL Access",
+                        "FromPort": 1433,
+                        "IpProtocol": "tcp",
+                        "CidrIp": {
+                            "Fn::GetAtt": [
+                                "VPC",
+                                "CidrBlock"
+                            ]
+                        },
+                        "ToPort": 1433
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "RdsDBSubnetGroup": {
+            "Type": "AWS::RDS::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "RDS-Subnet-Group",
+                "DBSubnetGroupName": "RDS-Subnet-Group",
+                "SubnetIds": [
+                    {
+                        "Ref": "VPCSubnet1"
+                    },
+                    {
+                        "Ref": "VPCSubnet2"
+                    }
+                ]
+            }
+        },
+        "RDSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "monitoring.rds.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+                    }
+                ],
+                "Path": "/",
+                "RoleName": "RDS-Enhanced-Monitoring-Role"
+            }
+        },
+        "RDSKey": {
+            "Type": "AWS::KMS::Key",
+            "Properties": {
+                "Description": "An example symmetric encryption KMS key",
+                "EnableKeyRotation": true,
+                "PendingWindowInDays": 20,
+                "KeyPolicy": {
+                    "Version": "2012-10-17",
+                    "Id": "key-default-1",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Resource": "*",
+                            "Action": "kms:*",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "RdsDB": {
+            "Type": "AWS::RDS::DBInstance",
+            "Metadata": {
+                "cfn-lint": {
+                    "config": {
+                        "ignore_checks": [
+                            "E2521",
+                            "E3002"
+                        ]
+                    }
+                }
+            },
+            "Properties": {
+                "AllocatedStorage": 20,
+                "AutoMinorVersionUpgrade": true,
+                "BackupRetentionPeriod": 5,
+                "DBInstanceClass": "db.t3.xlarge",
+                "DBInstanceIdentifier": "RDS",
+                "DBSubnetGroupName": {
+                    "Ref": "RdsDBSubnetGroup"
+                },
+                "DeleteAutomatedBackups": true,
+                "DeletionProtection": true,
+                "EnableCloudwatchLogsExports": [
+                    "agent",
+                    "error"
+                ],
+                "EnablePerformanceInsights": true,
+                "Engine": "sqlserver-se",
+                "EngineVersion": "15.00.4198.2.v1",
+                "LicenseModel": "license-included",
+                "KmsKeyId": "alias/aws/rds",
+                "ManageMasterUserPassword": true,
+                "MasterUsername": "admin",
+                "MasterUserSecret": {
+                    "KmsKeyId": {
+                        "Ref": "RDSKey"
+                    }
+                },
+                "MonitoringInterval": 5,
+                "MonitoringRoleArn": {
+                    "Fn::GetAtt": [
+                        "RDSRole",
+                        "Arn"
+                    ]
+                },
+                "MultiAZ": true,
+                "PerformanceInsightsKMSKeyId": "alias/aws/rds",
+                "PerformanceInsightsRetentionPeriod": 7,
+                "PubliclyAccessible": false,
+                "StorageEncrypted": true,
+                "StorageType": "gp3",
+                "VPCSecurityGroups": [
+                    {
+                        "Ref": "RdsSG"
+                    }
+                ]
+            }
+        }
+    }
+}

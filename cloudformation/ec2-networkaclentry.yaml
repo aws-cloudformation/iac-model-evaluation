@@ -1,0 +1,97 @@
+Description: |
+  This stack automates the creation of an EC2 Newtork Acl and
+  its entries
+
+Conditions:
+  IsUsEast1: !Equals [!Ref "AWS::Region", "us-east-1"]
+
+Resources:
+  # A VPC to hold the network ACLs
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24
+
+  # Create DHCP options using AWS provided DNS
+  DhcpOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: !If [IsUsEast1, ec2.internal, !Sub "${AWS::Region}.compute.internal"]
+      DomainNameServers:
+      - AmazonProvidedDNS
+      NetbiosNodeType: 2
+
+  # Associate DHCP options to a VPC
+  VpcDhcpOptions:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      DhcpOptionsId: !GetAtt DhcpOptions.DhcpOptionsId
+      VpcId: !Ref Vpc
+
+  # Create Private subnet in 1st available AZ with the first /26 subnet mask of the VPC CIDR
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select [0, !GetAZs "us-east-1"]
+      CidrBlock:
+        Fn::Select:
+        - 0
+        - Fn::Cidr:
+            - !GetAtt Vpc.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref Vpc
+
+  # A network ACL attached to the VPC
+  NetworkAcl:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref Vpc
+
+  # A network ACL entry to allow https traffic inside the VPC
+  InboundHTTPSRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: NetworkAcl
+      RuleNumber: 100
+      Protocol: 6
+      RuleAction: allow
+      CidrBlock: !GetAtt Vpc.CidrBlock
+      PortRange:
+        From: 443
+        To: 443
+
+  # A network ACL entry to allow ssh traffic inside the VPC
+  InboundSSHRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: NetworkAcl
+      RuleNumber: 101
+      Protocol: 6
+      RuleAction: allow
+      CidrBlock: !GetAtt Vpc.CidrBlock
+      PortRange:
+        From: 22
+        To: 22
+  
+  # A network ACL entry to allow all outbound traffic
+  OutboundRule:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: NetworkAcl
+      RuleNumber: 100
+      Protocol: -1
+      Egress: true
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  # Associate the NetworkAcl to Subnet1
+  Subnet1NetworkAcl:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId: !GetAtt Subnet1.SubnetId
+      NetworkAclId: !GetAtt NetworkAcl.Id

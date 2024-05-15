@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: |
+  Create a AWS resource groups
+
+Resources:
+  # An AWS resource group based on a CloudFormation stack
+  CloudFormationStackGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Ref AWS::StackName
+      Description: A group that is based on this stack
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+        Query:
+          ResourceTypeFilters:
+            - AWS::AllSupported
+          StackIdentifier: !Ref AWS::StackId
+
+  # An AWS resource group based on a tag
+  TagGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name: !Ref AWS::StackName
+      Description: A group that is based on a tag
+      ResourceQuery:
+        Type: TAG_FILTERS_1_0
+        Query:
+          ResourceTypeFilters:
+            - AWS::AllSupported
+          TagFilters:
+            - Key: Environment
+              Values:
+                - Production

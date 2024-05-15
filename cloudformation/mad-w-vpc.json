@@ -1,0 +1,136 @@
+{
+    "Description": "Create a VPC with 2 subnets for the AWS Managed Microsoft AD with a password stored in secerets manager\n",
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default"
+            }
+        },
+        "VPCSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "VPCSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "AWSManagedADSecret": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Metadata": {
+                "checkov": {
+                    "skip": [
+                        {
+                            "id": "CKV_AWS_149"
+                        }
+                    ]
+                },
+                "guard": {
+                    "SuppressedRules": [
+                        "SECRETSMANAGER_USING_CMK",
+                        "SECRETSMANAGER_ROTATION_ENABLED_CHECK"
+                    ]
+                }
+            },
+            "Properties": {
+                "Description": "Secret used for provisioning Managed AD",
+                "GenerateSecretString": {
+                    "PasswordLength": 24
+                }
+            }
+        },
+        "ManagedAD": {
+            "Type": "AWS::DirectoryService::MicrosoftAD",
+            "Properties": {
+                "CreateAlias": false,
+                "Edition": "Enterprise",
+                "EnableSso": false,
+                "Name": "corp.example.com",
+                "Password": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${AWSManagedADSecret}}}"
+                },
+                "ShortName": "CORP",
+                "VpcSettings": {
+                    "SubnetIds": [
+                        {
+                            "Ref": "VPCSubnet1"
+                        },
+                        {
+                            "Ref": "VPCSubnet2"
+                        }
+                    ],
+                    "VpcId": {
+                        "Ref": "VPC"
+                    }
+                }
+            }
+        }
+    }
+}

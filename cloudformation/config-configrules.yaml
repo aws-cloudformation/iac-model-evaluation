@@ -1,0 +1,1053 @@
+Resources:
+
+  # Create an AWS config rule to validate access keys are rotated
+  # every 90 days
+  AccessKeysRotated:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: access-keys-rotated
+      InputParameters:
+        maxAccessKeyAge: "90"
+      Source:
+        Owner: AWS
+        SourceIdentifier: ACCESS_KEYS_ROTATED
+
+  # Create an AWS config rule to validate if an ACM
+  # certificate will expire within 90 days
+  AcmCertificateExpirationCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: acm-certificate-expiration-check
+      InputParameters:
+        daysToExpiration: "90"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ACM::Certificate
+      Source:
+        Owner: AWS
+        SourceIdentifier: ACM_CERTIFICATE_EXPIRATION_CHECK
+
+  # Create an AWS config rule to validate ALB is
+  # configured to route http to https
+  AlbHttpToHttpsRedirectionCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: alb-http-to-https-redirection-check
+      Source:
+        Owner: AWS
+        SourceIdentifier: ALB_HTTP_TO_HTTPS_REDIRECTION_CHECK
+
+  # Create an AWS config rule to validate if an API
+  # gateway has cache enabled and encrypted
+  ApiGwCacheEnabledAndEncrypted:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: api-gw-cache-enabled-and-encrypted
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ApiGateway::Stage
+      Source:
+        Owner: AWS
+        SourceIdentifier: API_GW_CACHE_ENABLED_AND_ENCRYPTED
+
+  # Create an AWS config rule to check if all methods in 
+  # Amazon API Gateway stages have logging enabled
+  ApiGwExecutionLoggingEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: api-gw-execution-logging-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ApiGateway::Stage
+          - AWS::ApiGatewayV2::Stage
+      Source:
+        Owner: AWS
+        SourceIdentifier: API_GW_EXECUTION_LOGGING_ENABLED
+
+  # Create an AWS config rule to check if AWS CloudTrail 
+  # trails are configured to send logs to CloudWatch logs. 
+  CloudTrailCloudWatchLogsEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloud-trail-cloud-watch-logs-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_CLOUD_WATCH_LOGS_ENABLED
+
+  # Create an AWS config rule to check if an AWS CloudTrail 
+  # trail is enabled in your AWS account
+  CloudTrailEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloudtrail-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_ENABLED
+
+  # Create an AWS config rule to check if AWS CloudTrail 
+  # is configured to use the server side encryption 
+  # (SSE) AWS Key Management Service (AWS KMS) encryption
+  CloudTrailEncryptionEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloud-trail-encryption-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_ENCRYPTION_ENABLED
+
+  # Create an AWS config rule to check if AWS CloudTrail 
+  # creates a signed digest file with logs
+  CloudTrailLogFileValidationEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloud-trail-log-file-validation-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUD_TRAIL_LOG_FILE_VALIDATION_ENABLED
+
+  # Create an AWS config rule to check if at least one 
+  # AWS CloudTrail trail is logging Amazon S3 data events 
+  # for all S3 buckets
+  CloudtrailS3DataeventsEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloudtrail-s3-dataevents-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUDTRAIL_S3_DATAEVENTS_ENABLED
+
+  # Create an AWS config rule to check if CloudWatch alarms 
+  # have an action configured for the 
+  # ALARM, INSUFFICIENT_DATA, or OK state
+  CloudwatchAlarmActionCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloudwatch-alarm-action-check
+      InputParameters:
+        alarmActionRequired: "true"
+        insufficientDataActionRequired: "true"
+        okActionRequired: "false"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::CloudWatch::Alarm
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUDWATCH_ALARM_ACTION_CHECK
+
+  # Create an AWS config rule to check if Amazon CloudWatch 
+  # Log Groups are encrypted with any AWS KMS key or 
+  # a specified AWS KMS key Id
+  CloudwatchLogGroupEncrypted:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: cloudwatch-log-group-encrypted
+      Source:
+        Owner: AWS
+        SourceIdentifier: CLOUDWATCH_LOG_GROUP_ENCRYPTED
+
+  # Create an AWS config rule to check if the project 
+  # contains environment variables AWS_ACCESS_KEY_ID 
+  # and AWS_SECRET_ACCESS_KEY
+  CodebuildProjectEnvvarAwscredCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: codebuild-project-envvar-awscred-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::CodeBuild::Project
+      Source:
+        Owner: AWS
+        SourceIdentifier: CODEBUILD_PROJECT_ENVVAR_AWSCRED_CHECK
+
+  # Create an AWS config rule to check if the Bitbucket source
+  # repository URL contains sign-in credentials or not.
+  CodebuildProjectSourceRepoUrlCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: codebuild-project-source-repo-url-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::CodeBuild::Project
+      Source:
+        Owner: AWS
+        SourceIdentifier: CODEBUILD_PROJECT_SOURCE_REPO_URL_CHECK
+
+  # Create an AWS config rule to check if RDS DB 
+  # instances have backups enabled
+  DbInstanceBackupEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: db-instance-backup-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::RDS::DBInstance
+      Source:
+        Owner: AWS
+        SourceIdentifier: DB_INSTANCE_BACKUP_ENABLED
+
+  # Create an AWS config rule to check if AWS DMS 
+  # replication instances are public
+  DmsReplicationNotPublic:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: dms-replication-not-public
+      Scope:
+        ComplianceResourceTypes: []
+      Source:
+        Owner: AWS
+        SourceIdentifier: DMS_REPLICATION_NOT_PUBLIC
+
+  # Create an AWS config rule to check if point-in-time
+  # recovery (PITR) is enabled for Amazon DynamoDB tables
+  DynamodbPitrEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: dynamodb-pitr-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::DynamoDB::Table
+      Source:
+        Owner: AWS
+        SourceIdentifier: DYNAMODB_PITR_ENABLED
+
+  # Create an AWS config rule to check if Amazon EBS
+  # snapshots are not publicly restorable
+  EbsSnapshotPublicRestorableCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ebs-snapshot-public-restorable-check
+      Source:
+        Owner: AWS
+        SourceIdentifier: EBS_SNAPSHOT_PUBLIC_RESTORABLE_CHECK
+
+  # Create an AWS config rule to check if Amazon EBS
+  # encryption is enabled by default
+  Ec2EbsEncryptionByDefault:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-ebs-encryption-by-default
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_EBS_ENCRYPTION_BY_DEFAULT
+
+  # Create an AWS config rule to check if your Amazon EC2 instances
+  # are managed by AWS SSM Agent
+  Ec2InstanceManagedBySsm:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-instance-managed-by-systems-manager
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Instance
+          - AWS::SSM::ManagedInstanceInventory
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_INSTANCE_MANAGED_BY_SSM
+
+  # Create an AWS config rule to check if EC2 instances
+  # have a public IP association
+  Ec2InstanceNoPublicIp:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-instance-no-public-ip
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Instance
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_INSTANCE_NO_PUBLIC_IP
+
+  # Create an AWS config rule to check if the status of the AWS Systems Manager 
+  # association compliance is COMPLIANT or NON_COMPLIANT after the 
+  # association execution on the instance
+  Ec2ManagedinstanceAssociationComplianceStatusCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-managedinstance-association-compliance-status-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::SSM::AssociationCompliance
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_MANAGEDINSTANCE_ASSOCIATION_COMPLIANCE_STATUS_CHECK
+
+  # Create an AWS config rule to check if the compliance status of the 
+  # AWS Systems Manager patch compliance is COMPLIANT or NON_COMPLIANT 
+  # after the patch installation on the instance
+  Ec2ManagedinstancePatchComplianceStatusCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-managedinstance-patch-compliance-status-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::SSM::PatchCompliance
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_MANAGEDINSTANCE_PATCH_COMPLIANCE_STATUS_CHECK
+
+  # Create an AWS config rule to check if non-default security groups 
+  # are attached to elastic network interfaces
+  Ec2SecurityGroupAttachedToEni:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-security-group-attached-to-eni
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_SECURITY_GROUP_ATTACHED_TO_ENI
+
+  # Create an AWS config rule to check if there are Amazon EC2
+  # instances stopped for more than the allowed number of days
+  Ec2StoppedInstance:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-stopped-instance
+      InputParameters:
+        AllowedDays: "30"
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_STOPPED_INSTANCE
+
+  # Create an AWS config rule to check if EBS volumes
+  # are attached to EC2 instances
+  Ec2VolumeInuseCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-volume-inuse-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Volume
+      Source:
+        Owner: AWS
+        SourceIdentifier: EC2_VOLUME_INUSE_CHECK
+
+  # Create an AWS config rule to check if Amazon EFS
+  # is configured to encrypt the file data using 
+  # AWS KMS
+  EfsEncryptedCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: efs-encrypted-check
+      Source:
+        Owner: AWS
+        SourceIdentifier: EFS_ENCRYPTED_CHECK
+
+  # Create an AWS config rule to check if all Elastic IP addresses 
+  # that are allocated to an AWS account are attached 
+  # to EC2 instances or in-use elastic network interfaces
+  EipAttached:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: eip-attached
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::EIP
+      Source:
+        Owner: AWS
+        SourceIdentifier: EIP_ATTACHED
+
+  # Create an AWS config rule to check if the Amazon ElastiCache Redis 
+  # clusters have automatic backup turned on
+  ElasticacheRedisClusterAutomaticBackupCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: elasticache-redis-cluster-automatic-backup-check
+      InputParameters:
+        snapshotRetentionPeriod: 15
+      Source:
+        Owner: AWS
+        SourceIdentifier: ELASTICACHE_REDIS_CLUSTER_AUTOMATIC_BACKUP_CHECK
+
+  # Create an AWS config rule to check if Amazon OpenSearch Service
+  # domains have encryption at rest configuration enabled
+  ElasticsearchEncryptedAtRest:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: elasticsearch-encrypted-at-rest
+      Source:
+        Owner: AWS
+        SourceIdentifier: ELASTICSEARCH_ENCRYPTED_AT_REST
+
+  # Create an AWS config rule to check if Amazon OpenSearch Service
+  # domains are in Amazon VPC
+  ElasticsearchInVpcOnly:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: elasticsearch-in-vpc-only
+      Source:
+        Owner: AWS
+        SourceIdentifier: ELASTICSEARCH_IN_VPC_ONLY
+
+  # Create an AWS config rule to check if the 
+  # Classic Load Balancers use SSL certificates
+  # provided by AWS Certificate Manager
+  ElbAcmCertificateRequired:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: elb-acm-certificate-required
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ElasticLoadBalancing::LoadBalancer
+      Source:
+        Owner: AWS
+        SourceIdentifier: ELB_ACM_CERTIFICATE_REQUIRED
+
+  # Create an AWS config rule to check if the 
+  # Application Load Balancer and the 
+  # Classic Load Balancer have logging enabled
+  ElbLoggingEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: elb-logging-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::ElasticLoadBalancing::LoadBalancer
+          - AWS::ElasticLoadBalancingV2::LoadBalancer
+      Source:
+        Owner: AWS
+        SourceIdentifier: ELB_LOGGING_ENABLED
+
+  # Create an AWS config rule to check if 
+  # Amazon EMR clusters have Kerberos enabled
+  EmrKerberosEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: emr-kerberos-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: EMR_KERBEROS_ENABLED
+
+  # Create an AWS config rule to check if 
+  # Amazon EMR clusters' master nodes have public IPs
+  EmrMasterNoPublicIp:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: emr-master-no-public-ip
+      Scope:
+        ComplianceResourceTypes: []
+      Source:
+        Owner: AWS
+        SourceIdentifier: EMR_MASTER_NO_PUBLIC_IP
+
+  # Create an AWS config rule to check if attached 
+  # Amazon EBS volumes are encrypted and optionally
+  # are encrypted with a specified KMS key.
+  EncryptedVolumes:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: encrypted-volumes
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Volume
+      Source:
+        Owner: AWS
+        SourceIdentifier: ENCRYPTED_VOLUMES
+
+  # Create an AWS config rule to check if Amazon GuardDuty
+  # is enabled in your AWS account and AWS Region
+  GuarddutyEnabledCentralized:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: guardduty-enabled-centralized
+      Source:
+        Owner: AWS
+        SourceIdentifier: GUARDDUTY_ENABLED_CENTRALIZED
+
+  # Create an AWS config rule to check if Amazon GuardDuty
+  # has findings that are non-archived
+  GuarddutyNonArchivedFindings:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: guardduty-non-archived-findings
+      InputParameters:
+        daysHighSev: "1"
+        daysLowSev: "30"
+        daysMediumSev: "7"
+      Source:
+        Owner: AWS
+        SourceIdentifier: GUARDDUTY_NON_ARCHIVED_FINDINGS
+
+  # Create an AWS config rule to check if the account password
+  # policy for AWS IAM users meets the specified
+  # requirements indicated in the parameters
+  IamPasswordPolicy:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-password-policy
+      InputParameters:
+        MaxPasswordAge: "90"
+        MinimumPasswordLength: "14"
+        PasswordReusePrevention: "24"
+        RequireLowercaseCharacters: "true"
+        RequireNumbers: "true"
+        RequireSymbols: "true"
+        RequireUppercaseCharacters: "true"
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_PASSWORD_POLICY
+
+  # Create an AWS config rule to check if AWS IAM policies
+  # that you create have Allow statements that grant
+  # permissions to all actions on all resources
+  IamPolicyNoStatementsWithAdminAccess:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-policy-no-statements-with-admin-access
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::IAM::Policy
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_POLICY_NO_STATEMENTS_WITH_ADMIN_ACCESS
+
+  # Create an AWS config rule to check if the root
+  # user access key is available
+  IamRootAccessKeyCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-root-access-key-check
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_ROOT_ACCESS_KEY_CHECK
+
+  # Create an AWS config rule to check whether IAM users
+  # are members of at least one IAM group
+  IamUserGroupMembershipCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-user-group-membership-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::IAM::User
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_GROUP_MEMBERSHIP_CHECK
+
+  # Create an AWS config rule to check if the AWS IAM
+  # users have multi-factor authentication (MFA) enabled
+  IamUserMfaEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-user-mfa-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_MFA_ENABLED
+
+  # Create an AWS config rule to check if none of your
+  # AWS IAM users have policies attached
+  IamUserNoPoliciesCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-user-no-policies-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::IAM::User
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_NO_POLICIES_CHECK
+
+  # Create an AWS config rule to check if your AWS IAM users
+  # have passwords or active access keys that have not been
+  # used within the 90 days
+  IamUserUnusedCredentialsCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: iam-user-unused-credentials-check
+      InputParameters:
+        maxCredentialUsageAge: "90"
+      Source:
+        Owner: AWS
+        SourceIdentifier: IAM_USER_UNUSED_CREDENTIALS_CHECK
+
+  # Create an AWS config rule to check if the incoming 
+  # SSH traffic for the security groups is accessible
+  IncomingSshDisabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: restricted-ssh
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+      Source:
+        Owner: AWS
+        SourceIdentifier: INCOMING_SSH_DISABLED
+
+  # Create an AWS config rule to check if your
+  # EC2 instances belong to a VPC
+  InstancesInVpc:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: ec2-instances-in-vpc
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::Instance
+      Source:
+        Owner: AWS
+        SourceIdentifier: INSTANCES_IN_VPC
+
+  # Create an AWS config rule to check if internet gateways
+  # are attached to an authorized Amazon VPC
+  InternetGatewayAuthorizedVpcOnly:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: internet-gateway-authorized-vpc-only
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::InternetGateway
+      Source:
+        Owner: AWS
+        SourceIdentifier: INTERNET_GATEWAY_AUTHORIZED_VPC_ONLY
+
+  # Create an AWS config rule to check if AWS KMS keys are
+  # not scheduled for deletion in AWS KMS
+  KmsCmkNotScheduledForDeletion:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: kms-cmk-not-scheduled-for-deletion
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::KMS::Key
+      Source:
+        Owner: AWS
+        SourceIdentifier: KMS_CMK_NOT_SCHEDULED_FOR_DELETION
+
+  # Create an AWS config rule to check if the AWS Lambda function
+  # policy attached to the Lambda resource prohibits public access
+  LambdaFunctionPublicAccessProhibited:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: lambda-function-public-access-prohibited
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Lambda::Function
+      Source:
+        Owner: AWS
+        SourceIdentifier: LAMBDA_FUNCTION_PUBLIC_ACCESS_PROHIBITED
+
+  # Create an AWS config rule to check if a Lambda function
+  # is allowed access to a VPC
+  LambdaInsideVpc:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: lambda-inside-vpc
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Lambda::Function
+      Source:
+        Owner: AWS
+        SourceIdentifier: LAMBDA_INSIDE_VPC
+
+  # Create an AWS config rule to check if AWS multi-factor authentication (MFA)
+  # is enabled for all AWS IAM users that use a console password
+  MfaEnabledForIamConsoleAccess:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: mfa-enabled-for-iam-console-access
+      Source:
+        Owner: AWS
+        SourceIdentifier: MFA_ENABLED_FOR_IAM_CONSOLE_ACCESS
+
+  # Create an AWS config rule to check if there is at
+  # least one multi-region AWS CloudTrail
+  MultiRegionCloudTrailEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: multi-region-cloudtrail-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: MULTI_REGION_CLOUD_TRAIL_ENABLED
+
+  # Create an AWS config rule to check if the Amazon RDS
+  # instances are not publicly accessible
+  RdsInstancePublicAccessCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: rds-instance-public-access-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::RDS::DBInstance
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_INSTANCE_PUBLIC_ACCESS_CHECK
+
+  # Create an AWS config rule to check if Amazon RDS
+  # DB snapshots are encrypted
+  RdsSnapshotEncrypted:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: rds-snapshot-encrypted
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::RDS::DBSnapshot
+          - AWS::RDS::DBClusterSnapshot
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_SNAPSHOT_ENCRYPTED
+
+  # Create an AWS config rule to check if Amazon RDS
+  # snapshots are public
+  RdsSnapshotsPublicProhibited:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: rds-snapshots-public-prohibited
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::RDS::DBSnapshot
+          - AWS::RDS::DBClusterSnapshot
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_SNAPSHOTS_PUBLIC_PROHIBITED
+
+  # Create an AWS config rule to check if storage encryption
+  # is enabled for your Amazon RDS DB instances
+  RdsStorageEncrypted:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: rds-storage-encrypted
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::RDS::DBInstance
+      Source:
+        Owner: AWS
+        SourceIdentifier: RDS_STORAGE_ENCRYPTED
+
+  # Create an AWS config rule to check if Amazon Redshift clusters
+  # are encryped and have logging enabled
+  RedshiftClusterConfigurationCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: redshift-cluster-configuration-check
+      InputParameters:
+        clusterDbEncrypted: "true"
+        loggingEnabled: "true"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Redshift::Cluster
+      Source:
+        Owner: AWS
+        SourceIdentifier: REDSHIFT_CLUSTER_CONFIGURATION_CHECK
+
+  # Create an AWS config rule to check if Amazon Redshift
+  # clusters have allow version upgrade enabled
+  RedshiftClusterMaintenancesettingsCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: redshift-cluster-maintenancesettings-check
+      InputParameters:
+        allowVersionUpgrade: "true"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Redshift::Cluster
+      Source:
+        Owner: AWS
+        SourceIdentifier: REDSHIFT_CLUSTER_MAINTENANCESETTINGS_CHECK
+
+  # Create an AWS config rule to check if Amazon Redshift clusters
+  # are not publicly accessible
+  RedshiftClusterPublicAccessCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: redshift-cluster-public-access-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Redshift::Cluster
+      Source:
+        Owner: AWS
+        SourceIdentifier: REDSHIFT_CLUSTER_PUBLIC_ACCESS_CHECK
+
+  # Create an AWS config rule to check if Amazon Redshift
+  # clusters require TLS/SSL encryption to connect to SQL clients
+  RedshiftRequireTlsSsl:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: redshift-require-tls-ssl
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::Redshift::Cluster
+      Source:
+        Owner: AWS
+        SourceIdentifier: REDSHIFT_REQUIRE_TLS_SSL
+
+  # Create an AWS config rule to check if the incoming
+  # SSH traffic for the security groups is accessible
+  RestrictedIncomingTraffic:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: restricted-common-ports
+      InputParameters:
+        blockedPort1: "20"
+        blockedPort2: "21"
+        blockedPort3: "3389"
+        blockedPort4: "3306"
+        blockedPort5: "4333"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+      Source:
+        Owner: AWS
+        SourceIdentifier: RESTRICTED_INCOMING_TRAFFIC
+
+  # Create an AWS config rule to check if your AWS account
+  # is enabled to use multi-factor authentication (MFA)
+  # hardware device to sign in with root credentials
+  RootAccountHardwareMfaEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: root-account-hardware-mfa-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: ROOT_ACCOUNT_HARDWARE_MFA_ENABLED
+
+  # Create an AWS config rule to check if the root user of
+  # your AWS account requires multi-factor authentication
+  # for console sign-in
+  RootAccountMfaEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: root-account-mfa-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: ROOT_ACCOUNT_MFA_ENABLED
+
+  # Create an AWS config rule to check if the required
+  # public access block settings are configured from
+  # account level
+  S3AccountLevelPublicAccessBlocks:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-account-level-public-access-blocks
+      InputParameters:
+        BlockPublicAcls: "true"
+        BlockPublicPolicy: "true"
+        IgnorePublicAcls: "true"
+        RestrictPublicBuckets: "true"
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::AccountPublicAccessBlock
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_ACCOUNT_LEVEL_PUBLIC_ACCESS_BLOCKS
+
+  # Create an AWS config rule to check if the S3 bucket
+  # has lock enabled, by default
+  S3BucketDefaultLockEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-default-lock-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_DEFAULT_LOCK_ENABLED
+
+  # Create an AWS config rule to check if logging is
+  # enabled for your S3 buckets
+  S3BucketLoggingEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-logging-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_LOGGING_ENABLED
+
+  # Create an AWS config rule to check if your
+  # Amazon S3 buckets do not allow public read access
+  S3BucketPublicReadProhibited:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-public-read-prohibited
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_READ_PROHIBITED
+
+  # Create an AWS config rule to check 
+  S3BucketPublicWriteProhibited:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-public-write-prohibited
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_PUBLIC_WRITE_PROHIBITED
+
+  # Create an AWS config rule to check if your Amazon S3
+  # buckets do not allow public write access
+  S3BucketReplicationEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-replication-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_REPLICATION_ENABLED
+
+  # Create an AWS config rule to check if your Amazon S3 bucket
+  # either has the Amazon S3 default encryption enabled or that
+  # the Amazon S3 bucket policy explicitly denies put-object
+  # requests without server side encryption that uses
+  # AES-256 or AWS Key Management Service
+  S3BucketServerSideEncryptionEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-server-side-encryption-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SERVER_SIDE_ENCRYPTION_ENABLED
+
+  # Create an AWS config rule to check if S3 buckets have
+  # policies that require requests to use SSL/TLS
+  S3BucketSslRequestsOnly:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-ssl-requests-only
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_SSL_REQUESTS_ONLY
+
+  # Create an AWS config rule to check if versioning
+  # is enabled for your S3 buckets
+  S3BucketVersioningEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: s3-bucket-versioning-enabled
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::S3::Bucket
+      Source:
+        Owner: AWS
+        SourceIdentifier: S3_BUCKET_VERSIONING_ENABLED
+
+  # Create an AWS config rule to check if AWS KMS key
+  # is configured for an Amazon SageMaker endpoint configuration
+  SagemakerEndpointConfigurationKmsKeyConfigured:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: sagemaker-endpoint-configuration-kms-key-configured
+      Source:
+        Owner: AWS
+        SourceIdentifier: SAGEMAKER_ENDPOINT_CONFIGURATION_KMS_KEY_CONFIGURED
+
+  # Create an AWS config rule to check if an AWS KMS key 
+  # is configured for an Amazon SageMaker notebook instance
+  SagemakerNotebookInstanceKmsKeyConfigured:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: sagemaker-notebook-instance-kms-key-configured
+      Source:
+        Owner: AWS
+        SourceIdentifier: SAGEMAKER_NOTEBOOK_INSTANCE_KMS_KEY_CONFIGURED
+
+  # Create an AWS config rule to check if direct internet access is
+  # disabled for an Amazon SageMaker notebook instance
+  SagemakerNotebookNoDirectInternetAccess:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: sagemaker-notebook-no-direct-internet-access
+      Source:
+        Owner: AWS
+        SourceIdentifier: SAGEMAKER_NOTEBOOK_NO_DIRECT_INTERNET_ACCESS
+
+  # Create an AWS config rule to check if AWS Secrets Manager
+  # secret has rotation enabled
+  SecretsmanagerRotationEnabledCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: secretsmanager-rotation-enabled-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::SecretsManager::Secret
+      Source:
+        Owner: AWS
+        SourceIdentifier: SECRETSMANAGER_ROTATION_ENABLED_CHECK
+
+  # Create an AWS config rule to check if AWS Secrets Manager secrets
+  # rotated successfully according to the rotation schedule
+  SecretsmanagerScheduledRotationSuccessCheck:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: secretsmanager-scheduled-rotation-success-check
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::SecretsManager::Secret
+      Source:
+        Owner: AWS
+        SourceIdentifier: SECRETSMANAGER_SCHEDULED_ROTATION_SUCCESS_CHECK
+
+  # Create an AWS config rule to check if AWS Security Hub
+  # is enabled for an AWS Account
+  SecurityhubEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: securityhub-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: SECURITYHUB_ENABLED
+
+  # Create an AWS config rule to check if an SNS topic
+  # is encrypted with AWS KMS
+  SnsEncryptedKms:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: sns-encrypted-kms
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::SNS::Topic
+      Source:
+        Owner: AWS
+        SourceIdentifier: SNS_ENCRYPTED_KMS
+
+  # Create an AWS config rule to check if the default security group
+  # of any Amazon VPC does not allow inbound or outbound traffic
+  VpcDefaultSecurityGroupClosed:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: vpc-default-security-group-closed
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+      Source:
+        Owner: AWS
+        SourceIdentifier: VPC_DEFAULT_SECURITY_GROUP_CLOSED
+
+  # Create an AWS config rule to check if Amazon VPC flow logs
+  # are found and enabled for all Amazon VPCs
+  VpcFlowLogsEnabled:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: vpc-flow-logs-enabled
+      Source:
+        Owner: AWS
+        SourceIdentifier: VPC_FLOW_LOGS_ENABLED
+
+  # Create an AWS config rule to check if security groups allowing
+  # unrestricted incoming traffic ('0.0.0.0/0' or '::/0') only
+  # allow inbound TCP or UDP connections on authorized ports
+  VpcSgOpenOnlyToAuthorizedPorts:
+    Type: AWS::Config::ConfigRule
+    Properties:
+      ConfigRuleName: vpc-sg-open-only-to-authorized-ports
+      Scope:
+        ComplianceResourceTypes:
+          - AWS::EC2::SecurityGroup
+      Source:
+        Owner: AWS
+        SourceIdentifier: VPC_SG_OPEN_ONLY_TO_AUTHORIZED_PORTS

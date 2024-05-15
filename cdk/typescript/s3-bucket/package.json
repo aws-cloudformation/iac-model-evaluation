@@ -1,0 +1,35 @@
+{
+  "name": "s3-bucket",
+  "version": "0.1.0",
+  "bin": {
+    "s3-bucket": "bin/s3-bucket.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "lint": "eslint bin lib",
+    "lint:fix": "eslint bin lib --fix",
+    "synth": "cdk synth -q",
+    "checkov": "checkov --framework cloudformation --quiet -f cdk.out/*.template.json",
+    "cfn-guard": "cfn-guard validate --rules ../../../cloudformation/rules/guard-rules-registry-all-rules.guard  --show-summary fail --data cdk.out/*.template.json",
+    "test": "npm run lint && npm run synth && npm run checkov && npm run cfn-guard"
+  },
+  "devDependencies": {
+    "@types/node": "20.1.7",
+    "@typescript-eslint/eslint-plugin": "^5.59.8",
+    "@typescript-eslint/parser": "^5.59.8",
+    "aws-cdk": "2.87.0",
+    "eslint": "^8.41.0",
+    "eslint-config-prettier": "^8.8.0",
+    "eslint-plugin-prettier": "^4.2.1",    
+    "prettier": "^2.8.8",
+    "ts-node": "^10.9.1",
+    "typescript": "~5.1.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "2.87.0",
+    "constructs": "^10.0.0",
+    "source-map-support": "^0.5.21"
+  }
+}

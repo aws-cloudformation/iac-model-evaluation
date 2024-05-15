@@ -1,0 +1,108 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "An example template for a Step Functions state machine.",
+    "Parameters": {
+        "Bucket": {
+            "Type": "String"
+        },
+        "Key": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "StatesExecutionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    {
+                                        "Fn::Sub": "states.${AWS::Region}.amazonaws.com"
+                                    }
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogDelivery",
+                                        "logs:CreateLogStream",
+                                        "logs:GetLogDelivery",
+                                        "logs:UpdateLogDelivery",
+                                        "logs:DeleteLogDelivery",
+                                        "logs:ListLogDeliveries",
+                                        "logs:PutLogEvents",
+                                        "logs:PutResourcePolicy",
+                                        "logs:DescribeResourcePolicies",
+                                        "logs:DescribeLogGroups"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        },
+                        "PolicyName": "LogDelivery"
+                    }
+                ]
+            }
+        },
+        "CloudWatchLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+                "LogGroupClass": "STANDARD",
+                "RetentionInDays": 90
+            }
+        },
+        "StateMachine": {
+            "Type": "AWS::StepFunctions::StateMachine",
+            "Properties": {
+                "StateMachineType": "STANDARD",
+                "TracingConfiguration": {
+                    "Enabled": false
+                },
+                "LoggingConfiguration": {
+                    "Destinations": [
+                        {
+                            "CloudWatchLogsLogGroup": {
+                                "LogGroupArn": {
+                                    "Fn::GetAtt": [
+                                        "CloudWatchLogGroup",
+                                        "Arn"
+                                    ]
+                                }
+                            }
+                        }
+                    ],
+                    "Level": "ERROR",
+                    "IncludeExecutionData": true
+                },
+                "DefinitionS3Location": {
+                    "Bucket": {
+                        "Ref": "Bucket"
+                    },
+                    "Key": {
+                        "Ref": "Key"
+                    }
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "StatesExecutionRole",
+                        "Arn"
+                    ]
+                }
+            }
+        }
+    }
+}

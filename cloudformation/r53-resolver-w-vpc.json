@@ -1,0 +1,213 @@
+{
+    "Description": "Create a VPC with 2 subnets for Inbound and Outbound Route 53 Resolvers\n",
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/24",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default"
+            }
+        },
+        "VPCSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "VPCSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": {
+                                "Ref": "AWS::Region"
+                            }
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                6
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "R53SG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "R53-Outbound-Resolver-Security-Group",
+                "GroupName": "R53-Outbound-Resolver-Security-Group",
+                "SecurityGroupEgress": [
+                    {
+                        "Description": "DNS Access",
+                        "FromPort": 53,
+                        "IpProtocol": "udp",
+                        "CidrIp": "0.0.0.0/0",
+                        "ToPort": 53
+                    },
+                    {
+                        "Description": "DNS Access",
+                        "FromPort": 53,
+                        "IpProtocol": "udp",
+                        "CidrIp": "0.0.0.0/0",
+                        "ToPort": 53
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "Description": "DNS",
+                        "FromPort": 53,
+                        "IpProtocol": "tcp",
+                        "CidrIp": {
+                            "Fn::GetAtt": [
+                                "VPC",
+                                "CidrBlock"
+                            ]
+                        },
+                        "ToPort": 53
+                    },
+                    {
+                        "Description": "DNS",
+                        "FromPort": 53,
+                        "IpProtocol": "udp",
+                        "CidrIp": {
+                            "Fn::GetAtt": [
+                                "VPC",
+                                "CidrBlock"
+                            ]
+                        },
+                        "ToPort": 53
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "R53RROutbound": {
+            "Type": "AWS::Route53Resolver::ResolverEndpoint",
+            "Properties": {
+                "Direction": "OUTBOUND",
+                "IpAddresses": [
+                    {
+                        "SubnetId": {
+                            "Ref": "VPCSubnet1"
+                        }
+                    },
+                    {
+                        "SubnetId": {
+                            "Ref": "VPCSubnet2"
+                        }
+                    }
+                ],
+                "Name": "R53-Outbound-Resolver",
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "R53SG"
+                    }
+                ]
+            }
+        },
+        "R53RInbound": {
+            "Type": "AWS::Route53Resolver::ResolverEndpoint",
+            "Properties": {
+                "Direction": "INBOUND",
+                "IpAddresses": [
+                    {
+                        "SubnetId": {
+                            "Ref": "VPCSubnet1"
+                        }
+                    },
+                    {
+                        "SubnetId": {
+                            "Ref": "VPCSubnet2"
+                        }
+                    }
+                ],
+                "Name": "R53-Inbound-Resolver",
+                "SecurityGroupIds": [
+                    {
+                        "Ref": "R53SG"
+                    }
+                ]
+            }
+        },
+        "RR53RuleMAD": {
+            "Type": "AWS::Route53Resolver::ResolverRule",
+            "Properties": {
+                "Name": "R53-Rule-Test",
+                "DomainName": "aws.amazon.com",
+                "ResolverEndpointId": {
+                    "Ref": "R53RROutbound"
+                },
+                "RuleType": "FORWARD",
+                "TargetIps": [
+                    {
+                        "Ip": "10.0.0.10"
+                    }
+                ]
+            }
+        },
+        "RR53RRAssocMad": {
+            "Type": "AWS::Route53Resolver::ResolverRuleAssociation",
+            "Properties": {
+                "ResolverRuleId": {
+                    "Ref": "RR53RuleMAD"
+                },
+                "VPCId": {
+                    "Ref": "VPC"
+                }
+            }
+        }
+    }
+}

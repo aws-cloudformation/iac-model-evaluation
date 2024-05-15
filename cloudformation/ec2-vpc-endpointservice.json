@@ -1,0 +1,51 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Parameters": {
+        "AWSPrincipals": {
+            "Type": "CommaDelimitedList"
+        },
+        "SubnetIDs": {
+            "Type": "CommaDelimitedList"
+        }
+    },
+    "Resources": {
+        "NetworkLoadBalancer": {
+            "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties": {
+                "Type": "network",
+                "Scheme": "internal",
+                "Subnets": {
+                    "Ref": "SubnetIDs"
+                },
+                "LoadBalancerAttributes": [
+                    {
+                        "Key": "load_balancing.cross_zone.enabled",
+                        "Value": true
+                    }
+                ]
+            }
+        },
+        "VpcEndpointService": {
+            "Type": "AWS::EC2::VPCEndpointService",
+            "Properties": {
+                "AcceptanceRequired": true,
+                "NetworkLoadBalancerArns": [
+                    {
+                        "Ref": "NetworkLoadBalancer"
+                    }
+                ]
+            }
+        },
+        "VpcEndpointServicePermissions": {
+            "Type": "AWS::EC2::VPCEndpointServicePermissions",
+            "Properties": {
+                "AllowedPrincipals": {
+                    "Ref": "AWSPrincipals"
+                },
+                "ServiceId": {
+                    "Ref": "VpcEndpointService"
+                }
+            }
+        }
+    }
+}

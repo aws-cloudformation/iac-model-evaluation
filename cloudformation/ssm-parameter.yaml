@@ -1,0 +1,25 @@
+
+Description: |
+  This stack creates SSM parameters of string
+  and a list of strings
+
+Resources:
+  # A SSM parameter to store a string
+  ParameterString:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: Key
+      Description: SSM Parameter for storing a string
+      Type: String
+      Value: Value
+      Tier: Standard
+
+  # A SSM parameter for a list of strings
+  ParameterList:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: KeyList
+      Description: SSM Parameter for storing a list of strings
+      Type: StringList
+      Value: Value1,Value2
+      Tier: Standard

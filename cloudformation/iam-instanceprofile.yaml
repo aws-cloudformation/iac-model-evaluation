@@ -1,0 +1,26 @@
+Description: |
+  This stack automates the creation of an IAM instance profile
+
+Resources:
+
+  # An IAM role to be assumed by the ec2 service
+  IamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Actions:
+          - sts:AssumeRole
+      Path: "/"
+
+  # Instance profile to be assumed by an EC2 instance
+  IamProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref IamRole
+      Path: "/"

@@ -1,0 +1,16 @@
+Description: |
+  This stack automates the creation of EC2 DHCP options
+
+Conditions:
+  IsUsEast1: !Equals [!Ref AWS::Region, "us-east-1"]
+
+Resources:
+
+  # DHCP options using Amazon provided DNS
+  IamRole:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: !If [IsUsEast1, "ec2.internal", !Sub "${AWS::Region}.compute.internal"]
+      DomainNameServers: 
+        - AmazonProvidedDNS
+      NetbiosNodeType: 2

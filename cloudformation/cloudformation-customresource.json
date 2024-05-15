@@ -1,0 +1,19 @@
+{
+    "Description": "This stack uses a CloudFormation custom resource\n",
+    "Parameters": {
+        "LambdaFunctionName": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CustomResource": {
+            "Type": "AWS::CloudFormation::CustomResource",
+            "Properties": {
+                "ServiceToken": {
+                    "Fn::Sub": "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}"
+                },
+                "Parameter": "Value"
+            }
+        }
+    }
+}
