@@ -45,23 +45,6 @@ $ cdk deploy --all
 > `DemoCloudfrontFunctionsStack.DistributionDomainName = xxxxxxxx.cloudfront.net`\
 > We will use this URL to access and test the website.
 
-## Testing the solution
-
-1. Head to _AWS_ console and then to _Amazon Athena_
-2. On the left panel, go to **Query editor**
-3. Change the **Workgroup** selection to `log-auditing`
-4. On **Data source**, choose `AwsDataCatalog`
-5. On **Database**, choose `log-database`
-6. Two tables will be displayed on the **Tables** section. Expand both and their fields will be displayed
-7. You can now start writing your queries on the right panel and then clicking **Run** to perform the query against the
-   database.
-8. Optionally you can go to the **Saved queries** and select one to open on the **Editor** panel, helping you format the
-   query.
-
-> **Tip**: you can explore the `auditing-logs` bucket and check all the log files inside it. If you want to add other
-> logs to perform more complex tests, follow the directory structure and if needed to add another directory, make sure
-> you run the respective _Glue Crawler_ in order to update the partitions.
-
 ## Destroying the deployment
 
 To destroy the provisioned infrastructure, you can simply run the following command:
