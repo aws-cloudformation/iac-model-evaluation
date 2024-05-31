@@ -70,27 +70,6 @@ To destroy the provisioned infrastructure, you can simply run the following comm
 $ cdk destroy --all
 ```
 
-## Running Unit Tests
-
-To invoke Unit Tests (from the root project folder)
-
-```
-pytest
-```
-
-If you want to invoke a specific unit test file, just pass the filename as a parameter. (wildcards also work,
-e.g. `pytest tests/unit/*_stack*`).
-
-```
-pytest tests/unit/<test_filename>
-```
-
-# Welcome to your CDK TypeScript project
-
-This is a blank project for CDK development with TypeScript.
-
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
-
 ## Useful commands
 
 * `npm run build`   compile typescript to js
