@@ -1,0 +1,372 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Creates a VPC with 2 subnets, a KMS key, Security group for an Amazon Aurora MySQL DB Cluster with DB Cluster and DB Parameter groups",
+  "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/24",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default"
+      }
+    },
+    "Subnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::Cidr": [
+                {
+                  "Fn::GetAtt": [
+                    "VPC",
+                    "CidrBlock"
+                  ]
+                },
+                2,
+                6
+              ]
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "Subnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": {
+                "Ref": "AWS::Region"
+              }
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::Cidr": [
+                {
+                  "Fn::GetAtt": [
+                    "VPC",
+                    "CidrBlock"
+                  ]
+                },
+                2,
+                6
+              ]
+            }
+          ]
+        },
+        "MapPublicIpOnLaunch": false,
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      }
+    },
+    "DBSubnetGroup": {
+      "Properties": {
+        "DBSubnetGroupDescription": "Subnets available for the Amazon Aurora database cluster",
+        "SubnetIds": [
+          {
+            "Ref": "Subnet1"
+          },
+          {
+            "Ref": "Subnet2"
+          }
+        ]
+      },
+      "Type": "AWS::RDS::DBSubnetGroup"
+    },
+    "RDSSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow access to database port",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "FromPort": -1,
+            "IpProtocol": "-1",
+            "ToPort": -1,
+            "Description": "Allows all outbound traffic"
+          }
+        ],
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "10.0.0.0/24",
+            "FromPort": 3306,
+            "IpProtocol": "tcp",
+            "ToPort": 3306,
+            "Description": "Access from the DBAccessCIDR specified"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Sub": "RDSSecurityGroup-${AWS::StackName}"
+            }
+          }
+        ]
+      }
+    },
+    "RDSSecurityGroupIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "GroupId": {
+          "Fn::GetAtt": [
+            "RDSSecurityGroup",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "-1",
+        "SourceSecurityGroupId": {
+          "Ref": "RDSSecurityGroup"
+        },
+        "Description": "Self Reference"
+      }
+    },
+    "EncryptionKey": {
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Type": "AWS::KMS::Key",
+      "Properties": {
+        "Description": {
+          "Fn::Join": [
+            "- ",
+            [
+              "KMS Key for Cloudformation Stack ",
+              {
+                "Ref": "AWS::StackName"
+              }
+            ]
+          ]
+        },
+        "EnableKeyRotation": true,
+        "KeyPolicy": {
+          "Version": "2012-10-17",
+          "Id": {
+            "Ref": "AWS::StackName"
+          },
+          "Statement": [
+            {
+              "Sid": "Enable IAM User Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": [
+                  {
+                    "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                  }
+                ]
+              },
+              "Action": "kms:*",
+              "Resource": "*"
+            },
+            {
+              "Sid": "Enable RDS and CloudWatch Service Permissions",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "cloudwatch.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "kms:GenerateDataKey*",
+                "kms:Decrypt"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    },
+    "EncryptionKeyAlias": {
+      "Type": "AWS::KMS::Alias",
+      "Properties": {
+        "AliasName": {
+          "Fn::Sub": "alias/${AWS::StackName}"
+        },
+        "TargetKeyId": {
+          "Ref": "EncryptionKey"
+        }
+      }
+    },
+    "AMSDBCPG": {
+      "Type": "AWS::RDS::DBClusterParameterGroup",
+      "Properties": {
+        "Description": {
+          "Fn::Join": [
+            "- ",
+            [
+              "Aurora MySQL Cluster Parameter Group for Cloudformation Stack ",
+              {
+                "Ref": "AWS::StackName"
+              }
+            ]
+          ]
+        },
+        "Family": "aurora-mysql8.0",
+        "Parameters": {
+          "time_zone": "UTC"
+        }
+      }
+    },
+    "AMSDBPG": {
+      "Type": "AWS::RDS::DBParameterGroup",
+      "Properties": {
+        "Description": {
+          "Fn::Join": [
+            "- ",
+            [
+              "Aurora MySQL Database Instance Parameter Group for Cloudformation Stack ",
+              {
+                "Ref": "AWS::StackName"
+              }
+            ]
+          ]
+        },
+        "Family": "aurora-mysql8.0",
+        "Parameters": {
+          "slow_query_log": 1,
+          "long_query_time": 5,
+          "log_output": "FILE",
+          "innodb_print_all_deadlocks": 1
+        }
+      }
+    },
+    "AuroraDBCluster": {
+      "Type": "AWS::RDS::DBCluster",
+      "DeletionPolicy": "Snapshot",
+      "UpdateReplacePolicy": "Snapshot",
+      "Properties": {
+        "BackupRetentionPeriod": 35,
+        "BacktrackWindow": 259200,
+        "DatabaseName": "sampledb",
+        "DBClusterIdentifier": {
+          "Fn::Sub": "auroradb-${AWS::StackName}"
+        },
+        "DBClusterParameterGroupName": {
+          "Ref": "AMSDBCPG"
+        },
+        "DBSubnetGroupName": {
+          "Ref": "DBSubnetGroup"
+        },
+        "EnableIAMDatabaseAuthentication": true,
+        "Engine": "aurora-mysql",
+        "EngineVersion": "8.0.mysql_aurora.3.04.0",
+        "KmsKeyId": {
+          "Ref": "EncryptionKey"
+        },
+        "MasterUsername": "admin",
+        "ManageMasterUserPassword": true,
+        "MasterUserSecret": {
+          "KmsKeyId": {
+            "Ref": "EncryptionKey"
+          }
+        },
+        "Port": 3306,
+        "StorageEncrypted": true,
+        "StorageType": "aurora",
+        "VpcSecurityGroupIds": [
+          {
+            "Ref": "RDSSecurityGroup"
+          }
+        ]
+      }
+    },
+    "DBInst1": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "AutoMinorVersionUpgrade": false,
+        "DBClusterIdentifier": {
+          "Ref": "AuroraDBCluster"
+        },
+        "DBInstanceClass": "db.r6g.2xlarge",
+        "DBParameterGroupName": {
+          "Ref": "AMSDBPG"
+        },
+        "Engine": "aurora-mysql"
+      }
+    },
+    "DBInst2": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "AutoMinorVersionUpgrade": false,
+        "DBClusterIdentifier": {
+          "Ref": "AuroraDBCluster"
+        },
+        "DBInstanceClass": "db.r6g.2xlarge",
+        "DBParameterGroupName": {
+          "Ref": "AMSDBPG"
+        },
+        "Engine": "aurora-mysql"
+      }
+    }
+  },
+  "Outputs": {
+    "DBName": {
+      "Description": "Amazon Aurora database cluster name",
+      "Value": {
+        "Ref": "AuroraDBCluster"
+      }
+    },
+    "MasterUserSecret": {
+      "Description": "Master Credentials ARN",
+      "Value": {
+        "Fn::Sub": "${AuroraDBCluster.MasterUserSecret.SecretArn}"
+      }
+    },
+    "RDSEndPointAddress": {
+      "Description": "Amazon Aurora write endpoint",
+      "Value": {
+        "Fn::Sub": "${AuroraDBCluster.Endpoint.Address}"
+      }
+    },
+    "RDSReadEndPointAddress": {
+      "Description": "Amazon Aurora read endpoint",
+      "Value": {
+        "Fn::Sub": "${AuroraDBCluster.ReadEndpoint.Address}"
+      }
+    },
+    "RDSEndPointPort": {
+      "Description": "Amazon Aurora port",
+      "Value": {
+        "Fn::Sub": "${AuroraDBCluster.Endpoint.Port}"
+      }
+    },
+    "RDSEndPoints": {
+      "Description": "Full Amazon Aurora write endpoint",
+      "Value": {
+        "Fn::Sub": "${AuroraDBCluster.Endpoint.Address}:${AuroraDBCluster.Endpoint.Port}/mysql"
+      }
+    },
+    "RDSEncryptionKey": {
+      "Description": "The alias of the encryption key created for RDS",
+      "Value": {
+        "Ref": "EncryptionKeyAlias"
+      }
+    }
+  }
+}
