@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates a Redis cluster with Multi-AZ in a new VPC
+
+Resources:
+  # Create a NEW VPC with both Public an Private Subnets
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+
+  # Create the first public subnet in the VPC with a CIDR block of 10.0.1.0/24
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+
+  # Create the second public subnet in the VPC with a CIDR block of 10.0.2.0/24
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.0.2.0/24
+      MapPublicIpOnLaunch: true
+
+  # Create the first private subnet in the VPC with a CIDR block of 10.0.10.0/24
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.0.10.0/24
+      MapPublicIpOnLaunch: false
+
+  # Create the second private subnet in the VPC with a CIDR block of 10.0.11.0/24
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.0.11.0/24
+      MapPublicIpOnLaunch: false
+
+  # Create a Security Group for the Redis cluster allowing Ingress and Egress to "0.0.0.0/0" on port "6379"
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Redis Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
+
+  # Create a subnet group for the Redis cluster using the 2 private subnets from the VPC
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnets available for the Redis cluster
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  # Create a parameter group for the Redis cluster using Group family "redis6.x"
+  RedisParameterGroup:
+    Type: AWS::ElastiCache::ParameterGroup
+    Properties:
+      CacheParameterGroupFamily: redis7
+      Description: Parameter group for Redis cluster
+
+  # Create a Redis cluster using the newly created parameter group and subnet group, with a NumCacheClusters "2"
+  ElastiCacheCluster:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+        AutomaticFailoverEnabled: true
+        AutoMinorVersionUpgrade: true
+        CacheParameterGroupName: !Ref RedisParameterGroup
+        CacheNodeType: cache.t3.micro
+        CacheSubnetGroupName: !Ref RedisSubnetGroup
+        Engine: 'redis'
+        NumCacheClusters: 2
+        Port: 6379
+        ReplicationGroupDescription: 'Redis cluster'
+        SecurityGroupIds:
+            - !Ref RedisSecurityGroup
+
+Outputs:
+  # Create the output for the DNS address of the primary read-write cache node
+  PrimaryAddress:
+      Description: 'The DNS address of the primary read-write cache node.'
+      Value: !GetAtt ElastiCacheCluster.PrimaryEndPoint.Address
+
+  # Create the output for the port number of the primary read-write cache node of the read-only replica nodes
+  PrimaryPort:
+      Description: 'The number of the port that the primary read-write cache engine is listening on.'
+      Value: !GetAtt ElastiCacheCluster.PrimaryEndPoint.Port
+
+  # Create the output for the DNS addresses of the read-only replica nodes
+  SecondaryAddresses:
+      Description: 'A string with a list of endpoints for the read-only replicas.'
+      Value: !GetAtt ElastiCacheCluster.ReadEndPoint.Addresses
+
+  # Create the output for the port number of the read-only replica nodes
+  SecondaryPorts:
+      Description: 'A string with a list of ports for the read-only replicas. '
+      Value: !GetAtt ElastiCacheCluster.ReadEndPoint.Ports
