@@ -2,9 +2,17 @@ import * as cdk from 'aws-cdk-lib';
 import {Construct} from 'constructs';
 import {BlockPublicAccess, Bucket, BucketEncryption} from "aws-cdk-lib/aws-s3";
 import {BucketDeployment, Source} from "aws-cdk-lib/aws-s3-deployment";
-import {Distribution, Function, FunctionCode, FunctionRuntime, OriginAccessIdentity} from "aws-cdk-lib/aws-cloudfront";
-import {CanonicalUserPrincipal, PolicyStatement} from "aws-cdk-lib/aws-iam";
+import {
+  AllowedMethods,
+  Distribution,
+  Function,
+  FunctionCode,
+  FunctionEventType,
+  FunctionRuntime,
+  OriginAccessIdentity
+} from "aws-cdk-lib/aws-cloudfront";
 import {BehaviorOptions} from "aws-cdk-lib/aws-cloudfront/lib/distribution";
+import {S3Origin} from "aws-cdk-lib/aws-cloudfront-origins";
 
 export class DemoCloudfrontFunctionsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -26,6 +34,14 @@ export class DemoCloudfrontFunctionsStack extends cdk.Stack {
       retainOnDelete: false,
     });
 
+    // create a Origin Access Identity for CloudFront
+    const cloudfrontOAI = new OriginAccessIdentity(this, 'cloudfront-OAI', {
+      comment: `OAI for ${id}`
+    });
+
+    // grant read permissions on the bucket to the CloudFront's Origin Access Identity
+    bucket.grantRead(cloudfrontOAI);
+
     // create a cloudFront function from the request-function.js file
     const requestFunction = new Function(this, 'RequestFunction', {
       functionName: 'RequestFunction',
@@ -44,34 +60,24 @@ export class DemoCloudfrontFunctionsStack extends cdk.Stack {
       })
     });
 
-    const cloudfrontOAI = new OriginAccessIdentity(this, 'cloudfront-OAI', {
-      comment: `OAI for ${id}`
-    });
-
-    bucket.addToResourcePolicy(new PolicyStatement({
-      actions: ['s3:GetObject'],
-      resources: [bucket.arnForObjects('*')],
-      principals: [new CanonicalUserPrincipal(cloudfrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId)]
-    }));
-
-    // create a CloudFront behavior with origin of my website bucket and both request and response functions
+    // create a CloudFront behavior using my website's bucket as origin and both request and response functions
     const defaultBehavior: BehaviorOptions = {
-      origin: new cdk.aws_cloudfront_origins.S3Origin(bucket),
+      origin: new S3Origin(bucket),
       compress: true,
-      allowedMethods: cdk.aws_cloudfront.AllowedMethods.ALLOW_ALL,
+      allowedMethods: AllowedMethods.ALLOW_ALL,
       functionAssociations: [
         {
           function: requestFunction,
-          eventType: cdk.aws_cloudfront.FunctionEventType.VIEWER_REQUEST,
+          eventType: FunctionEventType.VIEWER_REQUEST,
         },
         {
           function: responseFunction,
-          eventType: cdk.aws_cloudfront.FunctionEventType.VIEWER_RESPONSE,
+          eventType: FunctionEventType.VIEWER_RESPONSE,
         }
       ]
     };
 
-    // create a CloudFront distribution with the behavior created
+    // create a CloudFront distribution using the behavior created
     const distribution = new Distribution(this, 'SiteDistribution', {
       comment: 'CloudFront Functions example',
       defaultRootObject: 'index.html',
