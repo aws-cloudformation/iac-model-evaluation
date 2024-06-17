@@ -1,0 +1,194 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Creates a Redis cluster with Multi-AZ in a new VPC",
+  "Resources": {
+    "VPC": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default"
+      }
+    },
+    "PublicSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.1.0/24",
+        "MapPublicIpOnLaunch": true
+      }
+    },
+    "PublicSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.2.0/24",
+        "MapPublicIpOnLaunch": true
+      }
+    },
+    "PrivateSubnet1": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.10.0/24",
+        "MapPublicIpOnLaunch": false
+      }
+    },
+    "PrivateSubnet2": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.11.0/24",
+        "MapPublicIpOnLaunch": false
+      }
+    },
+    "RedisSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Redis Security Group",
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 6379,
+            "ToPort": 6379,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "SecurityGroupEgress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": 6379,
+            "ToPort": 6379,
+            "CidrIp": "0.0.0.0/0"
+          }
+        ]
+      }
+    },
+    "RedisSubnetGroup": {
+      "Type": "AWS::ElastiCache::SubnetGroup",
+      "Properties": {
+        "Description": "Subnets available for the Redis cluster",
+        "SubnetIds": [
+          {
+            "Ref": "PrivateSubnet1"
+          },
+          {
+            "Ref": "PrivateSubnet2"
+          }
+        ]
+      }
+    },
+    "RedisParameterGroup": {
+      "Type": "AWS::ElastiCache::ParameterGroup",
+      "Properties": {
+        "CacheParameterGroupFamily": "redis7",
+        "Description": "Parameter group for Redis cluster"
+      }
+    },
+    "ElastiCacheCluster": {
+      "Type": "AWS::ElastiCache::ReplicationGroup",
+      "Properties": {
+        "AutomaticFailoverEnabled": true,
+        "AutoMinorVersionUpgrade": true,
+        "CacheParameterGroupName": {
+          "Ref": "RedisParameterGroup"
+        },
+        "CacheNodeType": "cache.t3.micro",
+        "CacheSubnetGroupName": {
+          "Ref": "RedisSubnetGroup"
+        },
+        "Engine": "redis",
+        "NumCacheClusters": 2,
+        "Port": 6379,
+        "ReplicationGroupDescription": "Redis cluster",
+        "SecurityGroupIds": [
+          {
+            "Ref": "RedisSecurityGroup"
+          }
+        ]
+      }
+    }
+  },
+  "Outputs": {
+    "PrimaryAddress": {
+      "Description": "The DNS address of the primary read-write cache node.",
+      "Value": {
+        "Fn::GetAtt": [
+          "ElastiCacheCluster",
+          "PrimaryEndPoint.Address"
+        ]
+      }
+    },
+    "PrimaryPort": {
+      "Description": "The number of the port that the primary read-write cache engine is listening on.",
+      "Value": {
+        "Fn::GetAtt": [
+          "ElastiCacheCluster",
+          "PrimaryEndPoint.Port"
+        ]
+      }
+    },
+    "SecondaryAddresses": {
+      "Description": "A string with a list of endpoints for the read-only replicas.",
+      "Value": {
+        "Fn::GetAtt": [
+          "ElastiCacheCluster",
+          "ReadEndPoint.Addresses"
+        ]
+      }
+    },
+    "SecondaryPorts": {
+      "Description": "A string with a list of ports for the read-only replicas. ",
+      "Value": {
+        "Fn::GetAtt": [
+          "ElastiCacheCluster",
+          "ReadEndPoint.Ports"
+        ]
+      }
+    }
+  }
+}
