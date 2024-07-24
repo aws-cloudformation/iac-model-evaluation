@@ -1,0 +1,183 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Creates a VPC with 2 subnets, a KMS key, Security group for an Amazon Neptune cluster with DB Cluster and DB Parameter groups"
+
+Resources:
+
+  # Create default tenancy VPC with DNS hostname and resolution support using a /24 subnet mask
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/24
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+
+  # Create Private subnet in 1st AZ with the first /26 subnet mask of the VPC CIDR
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 0
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create Private subnet in 2nd AZ with the second /26 subnet mask of the VPC CIDR
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - Fn::GetAZs: !Ref AWS::Region
+      CidrBlock: !Select
+        - 1
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 6
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+      
+  # Create a DB Subnet group using the subnets just created
+  DBSubnetGroup:
+    Properties:
+      DBSubnetGroupDescription: "Subnets available for the Amazon Neptune cluster"
+      SubnetIds:
+       - !Ref Subnet1
+       - !Ref Subnet2
+    Type: "AWS::Neptune::DBSubnetGroup"
+    
+    
+  # Create a Security Group for the Neptune cluster to allow inbound traffic on the assigned DB port from the DBAccess CIDR specified
+  NeptuneSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Allow access to database port"
+      SecurityGroupEgress:
+        -
+          CidrIp: 0.0.0.0/0
+          FromPort: -1
+          IpProtocol: '-1'
+          ToPort: -1
+          Description: Allows all outbound traffic
+      SecurityGroupIngress:
+        -
+          CidrIp: 10.0.0.0/24
+          FromPort: 8182
+          IpProtocol: tcp
+          ToPort: 8182
+          Description: Access from the DBAccessCIDR specified
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: !Sub NeptuneSecurityGroup-${AWS::StackName}
+  
+  # Create a new Amazon Neptune DB cluster parameter group using family "neptune1.3" and enabling audit log
+  NeptuneClusterParameterGroup:
+    Type: AWS::Neptune::DBClusterParameterGroup
+    Properties:
+      Family: neptune1.3
+      Description: Parameter group for Amazon Neptune DB cluster
+      Parameters:
+        neptune_enable_audit_log: 1
+      
+  # Create a new Amazon Neptune DB instance parameter group using family "neptune1.3" and setting query timeout to 50000
+  NeptuneInstanceParameterGroup:
+    Type: AWS::Neptune::DBParameterGroup
+    Properties:
+      Family: neptune1.3
+      Description: Parameter group for Amazon Neptune DB instance
+      Parameters:
+        neptune_query_timeout: 50000
+  
+  # Create a new Amazon Neptune DB version 1.3.1.0 with KMS encryption
+  NeptuneDBCluster:
+    UpdateReplacePolicy: "Retain"
+    Type: "AWS::Neptune::DBCluster"
+    DeletionPolicy: "Retain"
+    Properties:
+      EngineVersion: "1.3.1.0"
+      KmsKeyId: !Ref EncryptionKey
+      DBClusterIdentifier: !Sub db-neptune-${AWS::StackName}
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      DeletionProtection: true
+      StorageEncrypted: true
+      VpcSecurityGroupIds:
+        - !Ref NeptuneSecurityGroup
+      EnableCloudwatchLogsExports: 
+        - "slowquery"
+        - "audit"
+      BackupRetentionPeriod: 7
+      DBClusterParameterGroupName: !Ref NeptuneClusterParameterGroup
+      DBInstanceParameterGroupName: !Ref NeptuneInstanceParameterGroup
+ 
+  # Create a KMS key to be used with the Neptune cluster along with a key policy for Root access
+  EncryptionKey:
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "KMS Key that protects my Amazon Neptune database"
+      Enabled: true
+      EnableKeyRotation: true
+      KeyUsage: "ENCRYPT_DECRYPT"
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: !Ref AWS::StackName
+        Statement:
+          - Sid: Allow direct access to key metadata to the account
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action:
+                - "kms:Create*"
+                - "kms:Describe*"
+                - "kms:Enable*"
+                - "kms:List*"
+                - "kms:Put*"
+                - "kms:Update*"
+                - "kms:Revoke*"
+                - "kms:Disable*"
+                - "kms:Get*"
+                - "kms:Delete*"
+                - "kms:ScheduleKeyDeletion"
+                - "kms:CancelKeyDeletion"
+            Resource: '*'
+          - Sid: Allow access through RDS for all principals in the account that are authorized to use RDS
+            Effect: Allow
+            Principal:
+                AWS: !Sub ${AWS::AccountId}
+            Action:
+                - "kms:Encrypt"
+                - "kms:Decrypt"
+                - "kms:ReEncrypt*"
+                - "kms:GenerateDataKey*"
+                - "kms:DescribeKey"
+            Condition:
+                StringEquals:
+                  kms:CallerAccount: !Sub ${AWS::AccountId}
+                  kms:ViaService: "rds.eu-west-1.amazonaws.com"
+            Resource: "*"
+
+Outputs:
+  # Create the output for the connection endpoint for the DB cluster.
+  Endpoint:
+      Description: 'The connection endpoint for the DB cluster.'
+      Value: !GetAtt NeptuneDBCluster.Endpoint
+
+  # Create the output for the port number on which the DB instances in the DB cluster accept connections.
+  Port:
+      Description: 'The port number on which the DB instances in the DB cluster accept connections.'
+      Value: !GetAtt NeptuneDBCluster.Port
+
+  # Create the output for the reader endpoint for the DB cluster
+  ReadEndpoint:
+      Description: 'The reader endpoint for the DB cluster.'
+      Value: !GetAtt NeptuneDBCluster.ReadEndpoint
