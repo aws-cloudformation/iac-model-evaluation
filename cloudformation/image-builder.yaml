@@ -1,0 +1,285 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "Creates ImageBuilder component, Image Recipe, Infrastructure configuration, Distribution configuration, Image Pipeline, Lifecycle policy and a custom Workflow"
+
+Resources:
+  # Creating a custom component by using a sample document definition
+  MyCfnComponent:
+    Type: AWS::ImageBuilder::Component
+    Properties:
+      Data: |-
+        name: Chef Client Execution on Linux
+        description: This is a sample component that demonstrates how to download and execute a Chef recipe against a Linux server. This sample will install Chef using the Chef Software Install script. For more information about the installation script, review the documentation at https://docs.chef.io/packages/#chef-software-install-script.
+        schemaVersion: 1.0
+        constants:
+          - ChefInstallationScriptSource:
+              type: string
+              value: https://omnitruck.chef.io/install.sh
+          - RecipeSource:
+              type: string
+              value: 's3://<enter_s3_bucket_name_here>/<enter_s3_object_key_here>'
+        phases:
+          - name: build
+            steps:
+              - name: InstallationScript
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo "$HOME/chef_install.sh"
+              - name: DownloadInstallationScript
+                action: WebDownload
+                inputs:
+                  - source: '{{ ChefInstallationScriptSource }}'
+                    destination: '{{ build.InstallationScript.outputs.stdout }}'
+              - name: SetInstallationScriptExecutable
+                action: SetFilePermissions
+                inputs:
+                  - path: '{{ build.InstallationScript.outputs.stdout }}'
+                    permissions: 0700
+              - name: InstallChefClient
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - sudo '{{ build.InstallationScript.outputs.stdout }}' -c stable
+              - name: RecipeDestination
+                action: ExecuteBash
+                inputs:
+                  commands:
+                    - echo "$HOME/recipe.rb"
+              - name: DownloadRecipe
+                action: S3Download
+                inputs:
+                  - source: '{{ RecipeSource }}'
+                    destination: '{{ build.RecipeDestination.outputs.stdout }}'
+              - name: ApplyRecipe
+                action: ExecuteBinary
+                inputs:
+                  path: chef-client
+                  arguments:
+                    - '--local-mode'
+                    - '{{ build.RecipeDestination.outputs.stdout }}'
+                    - '--chef-license'
+                    - 'accept-no-persist'
+              - name: Cleanup
+                action: DeleteFile
+                inputs:
+                  - path: '{{ build.RecipeDestination.outputs.stdout }}'
+                  - path: '{{ build.InstallationScript.outputs.stdout }}'
+      Name: sample-component
+      Platform: Linux
+      Version: 1.0.0
+  
+  # Creating Image Recipe where we are using the custom component created above and an AWS-managed component
+  MyCfnImageRecipe:
+    Type: AWS::ImageBuilder::ImageRecipe
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: false
+            VolumeSize: 30
+            VolumeType: gp2
+      Components:
+        - ComponentArn: !Join
+            - ''
+            - - 'arn:aws:imagebuilder:'
+              - !Ref AWS::Region
+              - ':'
+              - !Ref AWS::AccountId
+              - ':component/'
+              - !GetAtt MyCfnComponent.Name
+              - /x.x.x
+        - ComponentArn: !Join
+            - ''
+            - - 'arn:aws:imagebuilder:'
+              - !Ref AWS::Region
+              - ':aws:component/chrony-time-configuration-test/x.x.x'
+      Name: sample-recipe
+      ParentImage: !Join
+        - ''
+        - - 'arn:aws:imagebuilder:'
+          - !Ref AWS::Region
+          - ':aws:image/amazon-linux-2-ecs-optimized-x86/x.x.x'
+      Version: 1.0.0
+      WorkingDirectory: /tmp
+  
+  # Creating IAM Role and IAM Instance Profile to be used by the Infrastructure configuration
+  IAMRoleImageBuilderA8786988:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - !Join
+          - ''
+          - - 'arn:'
+            - !Ref AWS::Partition
+            - ':iam::aws:policy/AdministratorAccess'
+  IAMInstanceProfileRoleImageBuilder81867A6F:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref IAMRoleImageBuilderA8786988
+  
+  # Creating Infrastructure Configuration
+  MyCfnInfrastructureConfiguration:
+    Type: AWS::ImageBuilder::InfrastructureConfiguration
+    Properties:
+      InstanceProfileName: !Ref IAMInstanceProfileRoleImageBuilder81867A6F
+      Name: sample-infra-configuration
+      TerminateInstanceOnFailure: true
+  
+  # Creating Distribution Configuration to distribute the AMI to us-west-2 region of same account.
+  MyCfnDistributionConfiguration:
+    Type: AWS::ImageBuilder::DistributionConfiguration
+    Properties:
+      Distributions:
+        - AmiDistributionConfiguration:
+            LaunchPermissionConfiguration:
+              UserIds:
+                - !Ref AWS::AccountId
+          Region: us-west-2
+      Name: sample-distribution-configuration
+  
+  # Creating ImageBuilder Pipeline
+  MyCfnImagePipeline:
+    Type: AWS::ImageBuilder::ImagePipeline
+    Properties:
+      DistributionConfigurationArn: !GetAtt MyCfnDistributionConfiguration.Arn
+      EnhancedImageMetadataEnabled: false
+      ImageRecipeArn: !GetAtt MyCfnImageRecipe.Arn
+      ImageScanningConfiguration:
+        ImageScanningEnabled: true
+      ImageTestsConfiguration:
+        ImageTestsEnabled: true
+      InfrastructureConfigurationArn: !GetAtt MyCfnInfrastructureConfiguration.Arn
+      Name: sample-image-pipeline
+      Schedule:
+        PipelineExecutionStartCondition: EXPRESSION_MATCH_AND_DEPENDENCY_UPDATES_AVAILABLE
+        ScheduleExpression: cron(0 9 * * ?)
+      Status: ENABLED
+  
+  # Creating IAM role to be used by the ImageBuilder LifecyclePolicy
+  MyIamRoleForLifeCyclePolicy3739591F:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: imagebuilder.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - !Join
+          - ''
+          - - 'arn:'
+            - !Ref AWS::Partition
+            - ':iam::aws:policy/AdministratorAccess'
+  
+  # Creating ImageBuilder LifecyclePolicy
+  MyCfnLifecyclePolicy:
+    Type: AWS::ImageBuilder::LifecyclePolicy
+    Properties:
+      ExecutionRole: !GetAtt MyIamRoleForLifeCyclePolicy3739591F.Arn
+      Name: sample-lifecycle-policy
+      PolicyDetails:
+        - Action:
+            IncludeResources:
+              Amis: true
+            Type: DEPRECATE
+          Filter:
+            Type: AGE
+            Unit: MONTHS
+            Value: 6
+      ResourceSelection:
+        TagMap:
+          Environment: Dev
+      ResourceType: AMI_IMAGE
+      Status: ENABLED
+  
+  # Creating ImageBuilder Workflow using a sample document definition 
+  MyCfnWorkflow:
+    Type: AWS::ImageBuilder::Workflow
+    Properties:
+      Data: |-
+        name: build-image-with-update-ssm-agent
+        description: Workflow to build an AMI
+        schemaVersion: 1.0
+        steps:
+          - name: LaunchBuildInstance
+            action: LaunchInstance
+            onFailure: Abort
+            inputs:
+              waitFor: "ssmAgent"
+          - name: UpdateSSMAgent
+            action: RunCommand
+            onFailure: Abort
+            inputs:
+              documentName: "AWS-UpdateSSMAgent"
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+              parameters:
+                allowDowngrade:
+                  - "false"
+          - name: ApplyBuildComponents
+            action: ExecuteComponents
+            onFailure: Abort
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+          - name: InventoryCollection
+            action: CollectImageMetadata
+            onFailure: Abort
+            if:
+              and:
+                - stringEquals: "AMI"
+                  value: "$.imagebuilder.imageType"
+                - booleanEquals: true
+                  value: "$.imagebuilder.collectImageMetadata"
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+          - name: RunSanitizeScript
+            action: SanitizeInstance
+            onFailure: Abort
+            if:
+              and:
+                - stringEquals: "AMI"
+                  value: "$.imagebuilder.imageType"
+                - stringEquals: "Linux"
+                  value: "$.imagebuilder.platform"
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+          - name: RunSysPrepScript
+            action: RunSysPrep
+            onFailure: Abort
+            if:
+              and:
+                - stringEquals: "AMI"
+                  value: "$.imagebuilder.imageType"
+                - stringEquals: "Windows"
+                  value: "$.imagebuilder.platform"
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+          - name: CreateOutputAMI
+            action: CreateImage
+            onFailure: Abort
+            if:
+              stringEquals: "AMI"
+              value: "$.imagebuilder.imageType"
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+          - name: TerminateBuildInstance
+            action: TerminateInstance
+            onFailure: Continue
+            inputs:
+              instanceId.$: "$.stepOutputs.LaunchBuildInstance.instanceId"
+        outputs:
+          - name: "ImageId"
+            value: "$.stepOutputs.CreateOutputAMI.imageId"
+      Name: sample-workflow
+      Type: BUILD
+      Version: 1.0.0
