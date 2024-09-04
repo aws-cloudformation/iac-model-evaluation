@@ -1,0 +1,268 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Creates ImageBuilder component, Image Recipe, Infrastructure configuration, Distribution configuration, Image Pipeline, Lifecycle policy and a custom Workflow",
+    "Resources": {
+        "MyCfnComponent": {
+            "Type": "AWS::ImageBuilder::Component",
+            "Properties": {
+                "Data": "name: Chef Client Execution on Linux\ndescription: This is a sample component that demonstrates how to download and execute a Chef recipe against a Linux server. This sample will install Chef using the Chef Software Install script. For more information about the installation script, review the documentation at https://docs.chef.io/packages/#chef-software-install-script.\nschemaVersion: 1.0\nconstants:\n  - ChefInstallationScriptSource:\n      type: string\n      value: https://omnitruck.chef.io/install.sh\n  - RecipeSource:\n      type: string\n      value: 's3://<enter_s3_bucket_name_here>/<enter_s3_object_key_here>'\nphases:\n  - name: build\n    steps:\n      - name: InstallationScript\n        action: ExecuteBash\n        inputs:\n          commands:\n            - echo \"$HOME/chef_install.sh\"\n      - name: DownloadInstallationScript\n        action: WebDownload\n        inputs:\n          - source: '{{ ChefInstallationScriptSource }}'\n            destination: '{{ build.InstallationScript.outputs.stdout }}'\n      - name: SetInstallationScriptExecutable\n        action: SetFilePermissions\n        inputs:\n          - path: '{{ build.InstallationScript.outputs.stdout }}'\n            permissions: 0700\n      - name: InstallChefClient\n        action: ExecuteBash\n        inputs:\n          commands:\n            - sudo '{{ build.InstallationScript.outputs.stdout }}' -c stable\n      - name: RecipeDestination\n        action: ExecuteBash\n        inputs:\n          commands:\n            - echo \"$HOME/recipe.rb\"\n      - name: DownloadRecipe\n        action: S3Download\n        inputs:\n          - source: '{{ RecipeSource }}'\n            destination: '{{ build.RecipeDestination.outputs.stdout }}'\n      - name: ApplyRecipe\n        action: ExecuteBinary\n        inputs:\n          path: chef-client\n          arguments:\n            - '--local-mode'\n            - '{{ build.RecipeDestination.outputs.stdout }}'\n            - '--chef-license'\n            - 'accept-no-persist'\n      - name: Cleanup\n        action: DeleteFile\n        inputs:\n          - path: '{{ build.RecipeDestination.outputs.stdout }}'\n          - path: '{{ build.InstallationScript.outputs.stdout }}'",
+                "Name": "sample-component",
+                "Platform": "Linux",
+                "Version": "1.0.0"
+            }
+        },
+        "MyCfnImageRecipe": {
+            "Type": "AWS::ImageBuilder::ImageRecipe",
+            "Properties": {
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": true,
+                            "Encrypted": false,
+                            "VolumeSize": 30,
+                            "VolumeType": "gp2"
+                        }
+                    }
+                ],
+                "Components": [
+                    {
+                        "ComponentArn": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:imagebuilder:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":component/",
+                                    {
+                                        "Fn::GetAtt": [
+                                            "MyCfnComponent",
+                                            "Name"
+                                        ]
+                                    },
+                                    "/x.x.x"
+                                ]
+                            ]
+                        }
+                    },
+                    {
+                        "ComponentArn": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:imagebuilder:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":aws:component/chrony-time-configuration-test/x.x.x"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "Name": "sample-recipe",
+                "ParentImage": {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:aws:imagebuilder:",
+                            {
+                                "Ref": "AWS::Region"
+                            },
+                            ":aws:image/amazon-linux-2-ecs-optimized-x86/x.x.x"
+                        ]
+                    ]
+                },
+                "Version": "1.0.0",
+                "WorkingDirectory": "/tmp"
+            }
+        },
+        "IAMRoleImageBuilderA8786988": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "ec2.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/AdministratorAccess"
+                            ]
+                        ]
+                    }
+                ]
+            }
+        },
+        "IAMInstanceProfileRoleImageBuilder81867A6F": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "IAMRoleImageBuilderA8786988"
+                    }
+                ]
+            }
+        },
+        "MyCfnInfrastructureConfiguration": {
+            "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
+            "Properties": {
+                "InstanceProfileName": {
+                    "Ref": "IAMInstanceProfileRoleImageBuilder81867A6F"
+                },
+                "Name": "sample-infra-configuration",
+                "TerminateInstanceOnFailure": true
+            }
+        },
+        "MyCfnDistributionConfiguration": {
+            "Type": "AWS::ImageBuilder::DistributionConfiguration",
+            "Properties": {
+                "Distributions": [
+                    {
+                        "AmiDistributionConfiguration": {
+                            "LaunchPermissionConfiguration": {
+                                "UserIds": [
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    }
+                                ]
+                            }
+                        },
+                        "Region": "us-west-2"
+                    }
+                ],
+                "Name": "sample-distribution-configuration"
+            }
+        },
+        "MyCfnImagePipeline": {
+            "Type": "AWS::ImageBuilder::ImagePipeline",
+            "Properties": {
+                "DistributionConfigurationArn": {
+                    "Fn::GetAtt": [
+                        "MyCfnDistributionConfiguration",
+                        "Arn"
+                    ]
+                },
+                "EnhancedImageMetadataEnabled": false,
+                "ImageRecipeArn": {
+                    "Fn::GetAtt": [
+                        "MyCfnImageRecipe",
+                        "Arn"
+                    ]
+                },
+                "ImageScanningConfiguration": {
+                    "ImageScanningEnabled": true
+                },
+                "ImageTestsConfiguration": {
+                    "ImageTestsEnabled": true
+                },
+                "InfrastructureConfigurationArn": {
+                    "Fn::GetAtt": [
+                        "MyCfnInfrastructureConfiguration",
+                        "Arn"
+                    ]
+                },
+                "Name": "sample-image-pipeline",
+                "Schedule": {
+                    "PipelineExecutionStartCondition": "EXPRESSION_MATCH_AND_DEPENDENCY_UPDATES_AVAILABLE",
+                    "ScheduleExpression": "cron(0 9 * * ?)"
+                },
+                "Status": "ENABLED"
+            }
+        },
+        "MyIamRoleForLifeCyclePolicy3739591F": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "imagebuilder.amazonaws.com"
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "ManagedPolicyArns": [
+                    {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "arn:",
+                                {
+                                    "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/AdministratorAccess"
+                            ]
+                        ]
+                    }
+                ]
+            }
+        },
+        "MyCfnLifecyclePolicy": {
+            "Type": "AWS::ImageBuilder::LifecyclePolicy",
+            "Properties": {
+                "ExecutionRole": {
+                    "Fn::GetAtt": [
+                        "MyIamRoleForLifeCyclePolicy3739591F",
+                        "Arn"
+                    ]
+                },
+                "Name": "sample-lifecycle-policy",
+                "PolicyDetails": [
+                    {
+                        "Action": {
+                            "IncludeResources": {
+                                "Amis": true
+                            },
+                            "Type": "DEPRECATE"
+                        },
+                        "Filter": {
+                            "Type": "AGE",
+                            "Unit": "MONTHS",
+                            "Value": 6
+                        }
+                    }
+                ],
+                "ResourceSelection": {
+                    "TagMap": {
+                        "Environment": "Dev"
+                    }
+                },
+                "ResourceType": "AMI_IMAGE",
+                "Status": "ENABLED"
+            }
+        },
+        "MyCfnWorkflow": {
+            "Type": "AWS::ImageBuilder::Workflow",
+            "Properties": {
+                "Data": "name: build-image-with-update-ssm-agent\ndescription: Workflow to build an AMI\nschemaVersion: 1.0\nsteps:\n  - name: LaunchBuildInstance\n    action: LaunchInstance\n    onFailure: Abort\n    inputs:\n      waitFor: \"ssmAgent\"\n  - name: UpdateSSMAgent\n    action: RunCommand\n    onFailure: Abort\n    inputs:\n      documentName: \"AWS-UpdateSSMAgent\"\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n      parameters:\n        allowDowngrade:\n          - \"false\"\n  - name: ApplyBuildComponents\n    action: ExecuteComponents\n    onFailure: Abort\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n  - name: InventoryCollection\n    action: CollectImageMetadata\n    onFailure: Abort\n    if:\n      and:\n        - stringEquals: \"AMI\"\n          value: \"$.imagebuilder.imageType\"\n        - booleanEquals: true\n          value: \"$.imagebuilder.collectImageMetadata\"\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n  - name: RunSanitizeScript\n    action: SanitizeInstance\n    onFailure: Abort\n    if:\n      and:\n        - stringEquals: \"AMI\"\n          value: \"$.imagebuilder.imageType\"\n        - stringEquals: \"Linux\"\n          value: \"$.imagebuilder.platform\"\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n  - name: RunSysPrepScript\n    action: RunSysPrep\n    onFailure: Abort\n    if:\n      and:\n        - stringEquals: \"AMI\"\n          value: \"$.imagebuilder.imageType\"\n        - stringEquals: \"Windows\"\n          value: \"$.imagebuilder.platform\"\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n  - name: CreateOutputAMI\n    action: CreateImage\n    onFailure: Abort\n    if:\n      stringEquals: \"AMI\"\n      value: \"$.imagebuilder.imageType\"\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\n  - name: TerminateBuildInstance\n    action: TerminateInstance\n    onFailure: Continue\n    inputs:\n      instanceId.$: \"$.stepOutputs.LaunchBuildInstance.instanceId\"\noutputs:\n  - name: \"ImageId\"\n    value: \"$.stepOutputs.CreateOutputAMI.imageId\"",
+                "Name": "sample-workflow",
+                "Type": "BUILD",
+                "Version": "1.0.0"
+            }
+        }
+    }
+}
