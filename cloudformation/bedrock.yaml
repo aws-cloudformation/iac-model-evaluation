@@ -25,7 +25,6 @@ Parameters:
     Type: String
     Description: The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.
   KnowledgeBaseDescription:
-    Default: Answer based only on information contained in knowledge base. 
     Type: String
     Description: The description of the knowledge base.
   DataSourceName: 
@@ -37,15 +36,31 @@ Parameters:
   AgentName: 
     Type: String
     Description: Name of the Bedrock Agent
+  FoundationModelForAgent:
+    Type: String
+    Description: Foundation Model which will be used by your Bedrock Agent
+  AgentInstruction:
+    Type: String
+    Description: Instruction for your Bedrock Agent
+  AgentDescription:
+    Type: String
+    Description: Description for your Bedrock Agent
+  AgentAliasName:
+    Type: String
+    Description: The name of the alias of the agent
+  AgentAliasDescription:
+    Type: String
+    Description: The description of the alias of the agent
   GuardrailName: 
     Type: String
     Description: Name of the Bedrock Agent
+  GuardrailVersionDescription:
+    Type: String
+    Description: A description of the guardrail version 
 
 
 Resources:
-  ##########################
-  ## Bedrock KnowledgeBas ##
-  ##########################  
+  # Bedrock KnowledgeBase
   KnowledgeBaseWithAoss:
     Type: AWS::Bedrock::KnowledgeBase
     Properties:
@@ -66,9 +81,7 @@ Resources:
             TextField: !Ref TextField
             MetadataField: !Ref MetadataField
 
-  ########################
-  ## Bedrock DataSource ##
-  ########################   
+  # Bedrock DataSource
   DataSource:
     Type: AWS::Bedrock::DataSource
     Properties:
@@ -80,9 +93,7 @@ Resources:
           BucketArn: !Sub arn:aws:s3:::${DataSourceBucketName}
       DataDeletionPolicy: DELETE
 
-  ###################
-  ## Bedrock Agent ##
-  ###################
+  # Bedrock Agent Role
   AmazonBedrockExecutionRoleForAgentsQA:
     Type: AWS::IAM::Role
     Properties:
@@ -95,31 +106,31 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
   
+  # Bedrock Agent
   Agent:
     Type: AWS::Bedrock::Agent
     Properties:
       AgentName: !Ref AgentName
       AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
       AutoPrepare: true
-      FoundationModel: "anthropic.claude-v2"
-      Instruction: "You are a Q&A bot to answer questions on Amazon SageMaker"
-      Description: "Description is here"
+      FoundationModel: !Ref FoundationModelForAgent
+      Instruction: !Ref AgentInstruction
+      Description: !Ref AgentDescription
       IdleSessionTTLInSeconds: 900
       KnowledgeBases:
         - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
           Description: !Ref KnowledgeBaseDescription
           KnowledgeBaseState: ENABLED
 
+  # Bedrock Agent Alias
   AgentAliasResource:
     Type: AWS::Bedrock::AgentAlias
     Properties:
       AgentId: !Ref Agent
-      AgentAliasName: "AgentAlias"
-      Description: "Alias for Agent"
+      AgentAliasName: !Ref AgentAliasName
+      Description: !Ref AgentAliasDescription
 
-  #######################
-  ## Bedrock Guardrail ##
-  #######################
+  # Bedrock Guardrail
   Guardrail:
     Type: "AWS::Bedrock::Guardrail"
     DependsOn:
@@ -179,8 +190,9 @@ Resources:
           - Threshold: 0.8
             Type: RELEVANCE
 
+  # Bedrock Guardrail Version
   GuardrailVersion:
     Type: AWS::Bedrock::GuardrailVersion
     Properties:
-      Description: "my-bedrock-guardrail-cfn new version"
+      Description: !Ref GuardrailVersionDescription
       GuardrailIdentifier: !GetAtt Guardrail.GuardrailArn
