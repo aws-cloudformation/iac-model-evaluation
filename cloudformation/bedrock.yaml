@@ -1,65 +1,88 @@
 
+Description: |
+  This stack automates the creation of Bedrock Knowledge Base, Data Source, 
+  Agent, AgentAlias, Guardrail and GuardrailVersion
+  
 Parameters:
   OpenSearchCollectionARN:
     Type: String
-    Description: OpenSearch Service Serverless (AOSS) collection ARN.
+    Description: OpenSearch Service Serverless (AOSS) collection ARN
+    
   EmbeddingModelArn:
     Type: String
     Description: Knowledge Base Model Arn, can get it by using $aws bedrock list-foundation-models 
+    
   AOSSIndexName:
     Type: String
-    Description: Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.
+    Description: Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection
+    
   VectorField:
     Type: String
     Description: Provide a name for the field
+    
   TextField:
     Type: String
     Description: Provide additional information that a knowledge base can retrieve with vectors
+    
   MetadataField:
     Type: String
     Description: Provide additional metadata that a knowledge base can retrieve with vectors
+    
   KnowledgeBaseName:
     Type: String
-    Description: The name of the knowledge base.
+    Description: The name of the knowledge base
+    
   BedrockExecutionRoleARNForKnowledgeBase:
     Type: String
-    Description: The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.
+    Description: The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy
+  
   KnowledgeBaseDescription:
     Type: String
-    Description: The description of the knowledge base.
+    Description: The description of the knowledge base
+    
   DataSourceName: 
     Type: String
     Description: Name of the Bedrock DataSource
+    
   DataSourceBucketName: 
     Type: String
     Description: Name of the S3 bucket which stored the DataSource
+    
   AgentName: 
     Type: String
     Description: Name of the Bedrock Agent
+    
   FoundationModelForAgent:
     Type: String
     Description: Foundation Model which will be used by your Bedrock Agent
+    
   AgentInstruction:
     Type: String
     Description: Instruction for your Bedrock Agent
+    
   AgentDescription:
     Type: String
     Description: Description for your Bedrock Agent
+    
   AgentAliasName:
     Type: String
     Description: The name of the alias of the agent
+    
   AgentAliasDescription:
     Type: String
     Description: The description of the alias of the agent
+    
   GuardrailName: 
     Type: String
     Description: Name of the Bedrock Agent
+    
   GuardrailVersionDescription:
     Type: String
     Description: A description of the guardrail version 
 
 
 Resources:
+
   # Bedrock KnowledgeBase
   KnowledgeBaseWithAoss:
     Type: AWS::Bedrock::KnowledgeBase
