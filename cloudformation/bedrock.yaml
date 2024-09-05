@@ -1,0 +1,186 @@
+
+Parameters:
+  OpenSearchCollectionARN:
+    Type: String
+    Description: OpenSearch Service Serverless (AOSS) collection ARN.
+  EmbeddingModelArn:
+    Type: String
+    Description: Knowledge Base Model Arn, can get it by using $aws bedrock list-foundation-models 
+  AOSSIndexName:
+    Type: String
+    Description: Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.
+  VectorField:
+    Type: String
+    Description: Provide a name for the field
+  TextField:
+    Type: String
+    Description: Provide additional information that a knowledge base can retrieve with vectors
+  MetadataField:
+    Type: String
+    Description: Provide additional metadata that a knowledge base can retrieve with vectors
+  KnowledgeBaseName:
+    Type: String
+    Description: The name of the knowledge base.
+  BedrockExecutionRoleARNForKnowledgeBase:
+    Type: String
+    Description: The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.
+  KnowledgeBaseDescription:
+    Default: Answer based only on information contained in knowledge base. 
+    Type: String
+    Description: The description of the knowledge base.
+  DataSourceName: 
+    Type: String
+    Description: Name of the Bedrock DataSource
+  DataSourceBucketName: 
+    Type: String
+    Description: Name of the S3 bucket which stored the DataSource
+  AgentName: 
+    Type: String
+    Description: Name of the Bedrock Agent
+  GuardrailName: 
+    Type: String
+    Description: Name of the Bedrock Agent
+
+
+Resources:
+  ##########################
+  ## Bedrock KnowledgeBas ##
+  ##########################  
+  KnowledgeBaseWithAoss:
+    Type: AWS::Bedrock::KnowledgeBase
+    Properties:
+      Name: !Ref KnowledgeBaseName
+      Description: !Ref KnowledgeBaseDescription
+      RoleArn: !Ref BedrockExecutionRoleARNForKnowledgeBase
+      KnowledgeBaseConfiguration:
+        Type: "VECTOR"
+        VectorKnowledgeBaseConfiguration:
+          EmbeddingModelArn: !Ref EmbeddingModelArn
+      StorageConfiguration:
+        Type: "OPENSEARCH_SERVERLESS"
+        OpensearchServerlessConfiguration:
+          CollectionArn: !Ref OpenSearchCollectionARN
+          VectorIndexName: !Ref AOSSIndexName
+          FieldMapping:
+            VectorField: !Ref VectorField
+            TextField: !Ref TextField
+            MetadataField: !Ref MetadataField
+
+  ########################
+  ## Bedrock DataSource ##
+  ########################   
+  DataSource:
+    Type: AWS::Bedrock::DataSource
+    Properties:
+      KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+      Name: !Ref DataSourceName
+      DataSourceConfiguration:
+        Type: "S3"
+        S3Configuration:
+          BucketArn: !Sub arn:aws:s3:::${DataSourceBucketName}
+      DataDeletionPolicy: DELETE
+
+  ###################
+  ## Bedrock Agent ##
+  ###################
+  AmazonBedrockExecutionRoleForAgentsQA:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: bedrock.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
+  
+  Agent:
+    Type: AWS::Bedrock::Agent
+    Properties:
+      AgentName: !Ref AgentName
+      AgentResourceRoleArn: !GetAtt AmazonBedrockExecutionRoleForAgentsQA.Arn
+      AutoPrepare: true
+      FoundationModel: "anthropic.claude-v2"
+      Instruction: "You are a Q&A bot to answer questions on Amazon SageMaker"
+      Description: "Description is here"
+      IdleSessionTTLInSeconds: 900
+      KnowledgeBases:
+        - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
+          Description: !Ref KnowledgeBaseDescription
+          KnowledgeBaseState: ENABLED
+
+  AgentAliasResource:
+    Type: AWS::Bedrock::AgentAlias
+    Properties:
+      AgentId: !Ref Agent
+      AgentAliasName: "AgentAlias"
+      Description: "Alias for Agent"
+
+  #######################
+  ## Bedrock Guardrail ##
+  #######################
+  Guardrail:
+    Type: "AWS::Bedrock::Guardrail"
+    DependsOn:
+      - KnowledgeBaseWithAoss
+    Properties: 
+      BlockedInputMessaging: "Guardrail applied based on the input."
+      BlockedOutputsMessaging: "Guardrail applied based on output."
+      Name: !Ref GuardrailName
+      Description: "My Bedrock Guardrail created with AWS CFN"
+      ContentPolicyConfig: 
+        FiltersConfig: 
+        - InputStrength: "HIGH"
+          OutputStrength: "HIGH"
+          Type: "SEXUAL"
+        - InputStrength: "HIGH"
+          OutputStrength: "HIGH"
+          Type: "VIOLENCE"
+        - InputStrength: "HIGH"
+          OutputStrength: "HIGH"
+          Type: "HATE"
+        - InputStrength: "HIGH"
+          OutputStrength: "HIGH"
+          Type: "INSULTS"
+        - InputStrength: "HIGH"
+          OutputStrength: "HIGH"
+          Type: "MISCONDUCT"
+        - InputStrength: "NONE"
+          OutputStrength: "NONE"
+          Type: "PROMPT_ATTACK"
+      SensitiveInformationPolicyConfig: 
+        PiiEntitiesConfig: 
+        - Action: "BLOCK"
+          Type: "EMAIL"
+        - Action: "ANONYMIZE"
+          Type: "IP_ADDRESS"
+      TopicPolicyConfig: 
+        TopicsConfig: 
+          - Definition: "Investment advice is inquiries, guidance, or recommendations about the management or allocation of funds or assets with the goal of generating returns or achieving specific financial objectives."
+            Examples: 
+              - "Is investing in the stocks better than bonds?"
+              - "Should I invest in gold?"
+            Name: "Investment Advice"
+            Type: DENY
+      WordPolicyConfig: 
+        # Profanity filter
+        ManagedWordListsConfig: 
+          - Type: PROFANITY
+        # Custom word filter
+        WordsConfig: 
+          - Text: BLOCKTHISWORD
+      ContextualGroundingPolicyConfig: 
+        FiltersConfig: 
+          # Grounding score represents the confidence that the model response is factually correct and grounded in the source. If the model response has a lower score than the defined threshold, the response will be blocked and the configured blocked message will be returned to the user. A higher threshold level blocks more responses
+          - Threshold: 0.8
+            Type: GROUNDING
+          # Relevance score represents the confidence that the model response is relevant to the user's query. If the model response has a lower score than the defined threshold, the response will be blocked and the configured blocked message will be returned to the user. A higher threshold level blocks more responses.
+          - Threshold: 0.8
+            Type: RELEVANCE
+
+  GuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      Description: "my-bedrock-guardrail-cfn new version"
+      GuardrailIdentifier: !GetAtt Guardrail.GuardrailArn
