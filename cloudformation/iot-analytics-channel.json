@@ -1,0 +1,15 @@
+{
+    "Description": "Create a simple Channel",
+    "Resources": {
+        "Channel": {
+            "Type": "AWS::IoTAnalytics::Channel",
+            "Properties": {
+                "ChannelName": "SimpleChannel",
+                "RetentionPeriod": {
+                    "Unlimited": false,
+                    "NumberOfDays": 10
+                }
+            }
+        }
+    }
+}
