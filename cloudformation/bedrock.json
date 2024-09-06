@@ -1,0 +1,368 @@
+{
+    "Parameters": {
+        "OpenSearchCollectionARN": {
+            "Description": "OpenSearch Service Serverless (AOSS) collection ARN.",
+            "Type": "String"
+        },
+        "EmbeddingModelArn": {
+            "Description": "Knowledge Base Model Arn, can use 'aws bedrock list-foundation-models' to get",
+            "Type": "String"
+        },
+        "AOSSIndexName": {
+            "Description": "Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.",
+            "Type": "String"
+        },
+        "VectorField": {
+            "Description": "Provide a name for the field",
+            "Type": "String"
+        },
+        "TextField": {
+            "Description": "Provide additional information that a knowledge base can retrieve with vectors",
+            "Type": "String"
+        },
+        "MetadataField": {
+            "Description": "Provide additional metadata that a knowledge base can retrieve with vectors",
+            "Type": "String"
+        },
+        "KnowledgeBaseName": {
+            "Description": "The name of the knowledge base.",
+            "Type": "String"
+        },
+        "BedrockExecutionRoleARNForKnowledgeBase": {
+            "Description": "The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.",
+            "Type": "String"
+        },
+        "KnowledgeBaseDescription": {
+            "Description": "The description of the knowledge base.",
+            "Type": "String"
+        },
+        "DataSourceName": {
+            "Description": "Name of the Bedrock DataSource",
+            "Type": "String"
+        },
+        "DataSourceBucketName": {
+            "Description": "Name of the S3 bucket which stored the DataSource",
+            "Type": "String"
+        },
+        "AgentName": {
+            "Description": "Name of the Bedrock Agent",
+            "Type": "String"
+        },
+        "FoundationModelForAgent": {
+            "Description": "Foundation Model which will be used by your Bedrock Agent",
+            "Type": "String"
+        },
+        "AgentInstruction": {
+            "Description": "Instruction for your Bedrock Agent",
+            "Type": "String"
+        },
+        "AgentDescription": {
+            "Description": "Description for your Bedrock Agent",
+            "Type": "String"
+        },
+        "AgentAliasName": {
+            "Description": "The name of the alias of the agent",
+            "Type": "String"
+        },
+        "AgentAliasDescription": {
+            "Description": "The description of the alias of the agent",
+            "Type": "String"
+        },
+        "GuardrailName": {
+            "Description": "Name of the Bedrock Agent",
+            "Type": "String"
+        },
+        "GuardrailVersionDescription": {
+            "Description": "A description of the guardrail version",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "KnowledgeBaseWithAoss": {
+            "Type": "AWS::Bedrock::KnowledgeBase",
+            "Properties": {
+                "Name": {
+                    "Ref": "KnowledgeBaseName"
+                },
+                "Description": {
+                    "Ref": "KnowledgeBaseDescription"
+                },
+                "RoleArn": {
+                    "Ref": "BedrockExecutionRoleARNForKnowledgeBase"
+                },
+                "KnowledgeBaseConfiguration": {
+                    "Type": "VECTOR",
+                    "VectorKnowledgeBaseConfiguration": {
+                        "EmbeddingModelArn": {
+                            "Ref": "EmbeddingModelArn"
+                        }
+                    }
+                },
+                "StorageConfiguration": {
+                    "Type": "OPENSEARCH_SERVERLESS",
+                    "OpensearchServerlessConfiguration": {
+                        "CollectionArn": {
+                            "Ref": "OpenSearchCollectionARN"
+                        },
+                        "VectorIndexName": {
+                            "Ref": "AOSSIndexName"
+                        },
+                        "FieldMapping": {
+                            "VectorField": {
+                                "Ref": "VectorField"
+                            },
+                            "TextField": {
+                                "Ref": "TextField"
+                            },
+                            "MetadataField": {
+                                "Ref": "MetadataField"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "DataSource": {
+            "Type": "AWS::Bedrock::DataSource",
+            "Properties": {
+                "KnowledgeBaseId": {
+                    "Ref": "KnowledgeBaseWithAoss"
+                },
+                "Name": {
+                    "Ref": "DataSourceName"
+                },
+                "DataSourceConfiguration": {
+                    "Type": "S3",
+                    "S3Configuration": {
+                        "BucketArn": {
+                            "Fn::Sub": "arn:aws:s3:::${DataSourceBucketName}"
+                        }
+                    }
+                },
+                "DataDeletionPolicy": "DELETE"
+            }
+        },
+        "AmazonBedrockExecutionRoleForAgentsQA": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "bedrock.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/AmazonBedrockFullAccess"
+                ]
+            }
+        },
+        "MyCustomKMSKey": {
+            "Type": "AWS::KMS::Key",
+            "Properties": {
+                "Description": "Custom KMS Key for Bedrock Agent encryption",
+                "EnableKeyRotation": true,
+                "KeyPolicy": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "Allow Amazon Bedrock to encrypt and decrypt Agent resources on behalf of authorized users",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "bedrock.amazonaws.com"
+                            },
+                            "Action": [
+                                "kms:*"
+                            ],
+                            "Resource": "*"
+                        },
+                        {
+                            "Sid": "Allow account root to modify the KMS key",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": {
+                                    "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:root"
+                                }
+                            },
+                            "Action": [
+                                "kms:*"
+                            ],
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "Agent": {
+            "Type": "AWS::Bedrock::Agent",
+            "Properties": {
+                "AgentName": {
+                    "Ref": "AgentName"
+                },
+                "AgentResourceRoleArn": {
+                    "Fn::GetAtt": [
+                        "AmazonBedrockExecutionRoleForAgentsQA",
+                        "Arn"
+                    ]
+                },
+                "AutoPrepare": true,
+                "FoundationModel": {
+                    "Ref": "FoundationModelForAgent"
+                },
+                "Instruction": {
+                    "Ref": "AgentInstruction"
+                },
+                "Description": {
+                    "Ref": "AgentDescription"
+                },
+                "IdleSessionTTLInSeconds": 900,
+                "CustomerEncryptionKeyArn": {
+                    "Fn::GetAtt": [
+                        "MyCustomKMSKey",
+                        "Arn"
+                    ]
+                },
+                "KnowledgeBases": [
+                    {
+                        "KnowledgeBaseId": {
+                            "Ref": "KnowledgeBaseWithAoss"
+                        },
+                        "Description": {
+                            "Ref": "KnowledgeBaseDescription"
+                        },
+                        "KnowledgeBaseState": "ENABLED"
+                    }
+                ]
+            }
+        },
+        "AgentAliasResource": {
+            "Type": "AWS::Bedrock::AgentAlias",
+            "Properties": {
+                "AgentId": {
+                    "Ref": "Agent"
+                },
+                "AgentAliasName": {
+                    "Ref": "AgentAliasName"
+                },
+                "Description": {
+                    "Ref": "AgentAliasDescription"
+                }
+            }
+        },
+        "Guardrail": {
+            "Type": "AWS::Bedrock::Guardrail",
+            "DependsOn": [
+                "KnowledgeBaseWithAoss"
+            ],
+            "Properties": {
+                "BlockedInputMessaging": "Guardrail applied based on the input.",
+                "BlockedOutputsMessaging": "Guardrail applied based on output.",
+                "Name": {
+                    "Ref": "GuardrailName"
+                },
+                "Description": "My Bedrock Guardrail created with AWS CFN",
+                "ContentPolicyConfig": {
+                    "FiltersConfig": [
+                        {
+                            "InputStrength": "HIGH",
+                            "OutputStrength": "HIGH",
+                            "Type": "SEXUAL"
+                        },
+                        {
+                            "InputStrength": "HIGH",
+                            "OutputStrength": "HIGH",
+                            "Type": "VIOLENCE"
+                        },
+                        {
+                            "InputStrength": "HIGH",
+                            "OutputStrength": "HIGH",
+                            "Type": "HATE"
+                        },
+                        {
+                            "InputStrength": "HIGH",
+                            "OutputStrength": "HIGH",
+                            "Type": "INSULTS"
+                        },
+                        {
+                            "InputStrength": "HIGH",
+                            "OutputStrength": "HIGH",
+                            "Type": "MISCONDUCT"
+                        },
+                        {
+                            "InputStrength": "NONE",
+                            "OutputStrength": "NONE",
+                            "Type": "PROMPT_ATTACK"
+                        }
+                    ]
+                },
+                "SensitiveInformationPolicyConfig": {
+                    "PiiEntitiesConfig": [
+                        {
+                            "Action": "BLOCK",
+                            "Type": "EMAIL"
+                        },
+                        {
+                            "Action": "ANONYMIZE",
+                            "Type": "IP_ADDRESS"
+                        }
+                    ]
+                },
+                "TopicPolicyConfig": {
+                    "TopicsConfig": [
+                        {
+                            "Definition": "Investment advice is inquiries, guidance, or recommendations about the management or allocation of funds or assets with the goal of generating returns or achieving specific financial objectives.",
+                            "Examples": [
+                                "Is investing in the stocks better than bonds?",
+                                "Should I invest in gold?"
+                            ],
+                            "Name": "Investment Advice",
+                            "Type": "DENY"
+                        }
+                    ]
+                },
+                "WordPolicyConfig": {
+                    "ManagedWordListsConfig": [
+                        {
+                            "Type": "PROFANITY"
+                        }
+                    ],
+                    "WordsConfig": [
+                        {
+                            "Text": "BLOCKTHISWORD"
+                        }
+                    ]
+                },
+                "ContextualGroundingPolicyConfig": {
+                    "FiltersConfig": [
+                        {
+                            "Threshold": "0.8",
+                            "Type": "GROUNDING"
+                        },
+                        {
+                            "Threshold": "0.8",
+                            "Type": "RELEVANCE"
+                        }
+                    ]
+                }
+            }
+        },
+        "GuardrailVersion": {
+            "Type": "AWS::Bedrock::GuardrailVersion",
+            "Properties": {
+                "Description": {
+                    "Ref": "GuardrailVersionDescription"
+                },
+                "GuardrailIdentifier": {
+                    "Fn::GetAtt": [
+                        "Guardrail",
+                        "GuardrailArn"
+                    ]
+                }
+            }
+        }
+    }
+}

@@ -82,7 +82,6 @@ Parameters:
 
 
 Resources:
-
   # Bedrock KnowledgeBase
   KnowledgeBaseWithAoss:
     Type: AWS::Bedrock::KnowledgeBase
@@ -129,6 +128,30 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonBedrockFullAccess
   
+  # Custom KMS key with a key policy For Bedrock Agent
+  MyCustomKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: "Custom KMS Key for Bedrock Agent encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'Allow Amazon Bedrock to encrypt and decrypt Agent resources on behalf of authorized users'
+            Effect: Allow
+            Principal:
+              Service: bedrock.amazonaws.com
+            Action:
+              - kms:*
+            Resource: "*"
+          - Sid: "Allow account root to modify the KMS key"
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+              - kms:*
+            Resource: "*"
+
   # Bedrock Agent
   Agent:
     Type: AWS::Bedrock::Agent
@@ -140,6 +163,7 @@ Resources:
       Instruction: !Ref AgentInstruction
       Description: !Ref AgentDescription
       IdleSessionTTLInSeconds: 900
+      CustomerEncryptionKeyArn: !GetAtt MyCustomKMSKey.Arn
       KnowledgeBases:
         - KnowledgeBaseId: !Ref KnowledgeBaseWithAoss
           Description: !Ref KnowledgeBaseDescription
