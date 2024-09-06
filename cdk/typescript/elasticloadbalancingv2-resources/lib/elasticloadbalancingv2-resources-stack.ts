@@ -1,8 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as elasticloadbalancingv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-
-export interface Elasticloadbalancingv2ResourcesStackProps extends cdk.StackProps {
+export interface ElasticLoadBalancingV2ResourcesStackProps extends cdk.StackProps {
   /**
    * CidrBlockForVPC
    * @default '186.0.0.0/24'
@@ -30,31 +29,19 @@ export interface Elasticloadbalancingv2ResourcesStackProps extends cdk.StackProp
   readonly availabilityZoneForSubnet2?: string;
 }
 
-export class Elasticloadbalancingv2ResourcesStack extends cdk.Stack {
-  public readonly loadBalancer;
-  public readonly targetGroup1;
-  public readonly targetGroup2;
-  public readonly listenerArn;
-  public readonly listenerRule1Arn;
-  public readonly listenerRule2Arn;
-  /**
-   * LoadBalancers associated with TargetGroup
-   */
-  public readonly loadBalancersAssociatedWithTargetGroup1;
-  /**
-   * LoadBalancers associated with TargetGroup
-   */
-  public readonly loadBalancersAssociatedWithTargetGroup2;
-  /**
-   * FullName of TargetGroup1
-   */
-  public readonly targetGroupFullName1;
-  /**
-   * FullName of TargetGroup2
-   */
-  public readonly targetGroupFullName2;
+export class ElasticLoadBalancingV2ResourcesStack extends cdk.Stack {
+  public readonly loadBalancer: elasticloadbalancingv2.ApplicationLoadBalancer;
+  public readonly targetGroup1: elasticloadbalancingv2.ApplicationTargetGroup;
+  public readonly targetGroup2: elasticloadbalancingv2.ApplicationTargetGroup;
+  public readonly listenerArn: string;
+  public readonly listenerRule1Arn: string;
+  public readonly listenerRule2Arn: string;
+  public readonly loadBalancersAssociatedWithTargetGroup1: string;
+  public readonly loadBalancersAssociatedWithTargetGroup2: string;
+  public readonly targetGroupFullName1: string;
+  public readonly targetGroupFullName2: string;
 
-  public constructor(scope: cdk.App, id: string, props: Elasticloadbalancingv2ResourcesStackProps = {}) {
+  public constructor(scope: cdk.App, id: string, props: ElasticLoadBalancingV2ResourcesStackProps = {}) {
     super(scope, id, props);
 
     // Applying default props
@@ -67,162 +54,111 @@ export class Elasticloadbalancingv2ResourcesStack extends cdk.Stack {
       availabilityZoneForSubnet2: props.availabilityZoneForSubnet2 ?? 'us-east-1b',
     };
 
-    // Resources
-    const vpc = new ec2.CfnVPC(this, 'VPC', {
-      cidrBlock: props.cidrBlockForVpc!,
+    // VPC related Resources
+    const vpc = new ec2.Vpc(this, 'VPC', {
+      cidr: props.cidrBlockForVpc!,
+      maxAzs: 2, // Default is all AZs in the region
     });
 
-    const subnet1 = new ec2.CfnSubnet(this, 'Subnet1', {
-      vpcId: vpc.ref,
-      availabilityZone: props.availabilityZoneForSubnet1!,
-      cidrBlock: props.cidrBlockForSubnet1!,
-    });
-
-    const subnet2 = new ec2.CfnSubnet(this, 'Subnet2', {
-      vpcId: vpc.ref,
-      availabilityZone: props.availabilityZoneForSubnet2!,
-      cidrBlock: props.cidrBlockForSubnet2!,
-    });
-
-    const targetGroup1 = new elasticloadbalancingv2.CfnTargetGroup(this, 'TargetGroup1', {
+    // Create Target Groups
+    this.targetGroup1 = new elasticloadbalancingv2.ApplicationTargetGroup(this, 'TargetGroup1', {
       port: 1000,
-      protocol: 'HTTP',
-      vpcId: vpc.ref,
+      protocol: elasticloadbalancingv2.ApplicationProtocol.HTTP,
+      vpc: vpc,
+      targetType: elasticloadbalancingv2.TargetType.INSTANCE,
     });
 
-    const targetGroup2 = new elasticloadbalancingv2.CfnTargetGroup(this, 'TargetGroup2', {
+    this.targetGroup2 = new elasticloadbalancingv2.ApplicationTargetGroup(this, 'TargetGroup2', {
       port: 2000,
-      protocol: 'HTTP',
-      vpcId: vpc.ref,
+      protocol: elasticloadbalancingv2.ApplicationProtocol.HTTP,
+      vpc: vpc,
+      targetType: elasticloadbalancingv2.TargetType.INSTANCE,
     });
 
-    const loadBalancer = new elasticloadbalancingv2.CfnLoadBalancer(this, 'LoadBalancer', {
-      scheme: 'internal',
-      subnets: [
-        subnet1.ref,
-        subnet2.ref,
-      ],
+    // Create Load Balancer
+    this.loadBalancer = new elasticloadbalancingv2.ApplicationLoadBalancer(this, 'LoadBalancer', {
+      vpc: vpc,
+      internetFacing: false, // Set to true for an internet-facing load balancer
     });
 
-    const listener = new elasticloadbalancingv2.CfnListener(this, 'Listener', {
-      defaultActions: [
-        {
-          type: 'forward',
-          targetGroupArn: targetGroup1.ref,
-        },
-      ],
-      loadBalancerArn: loadBalancer.ref,
+    // Create Listener
+    const listener = this.loadBalancer.addListener('Listener', {
       port: 8000,
-      protocol: 'HTTP',
+      protocol: elasticloadbalancingv2.ApplicationProtocol.HTTP,
     });
 
-    const listenerRule1 = new elasticloadbalancingv2.CfnListenerRule(this, 'ListenerRule1', {
-      actions: [
-        {
-          type: 'forward',
-          targetGroupArn: targetGroup1.ref,
-        },
-      ],
-      conditions: [
-        {
-          field: 'http-header',
-          httpHeaderConfig: {
-            httpHeaderName: 'User-Agent',
-            values: [
-              'Mozilla',
-            ],
-          },
-        },
-        {
-          field: 'http-header',
-          httpHeaderConfig: {
-            httpHeaderName: 'Referer',
-            values: [
-              'https://www.amazon.com/',
-            ],
-          },
-        },
-      ],
-      listenerArn: listener.ref,
+    // Add default action to listener
+    listener.addAction('DefaultAction', {
+      action: elasticloadbalancingv2.ListenerAction.forward([this.targetGroup1]),
+    });
+
+    // Create Listener Rules
+    listener.addAction('ListenerRule1', {
       priority: 1,
+      conditions: [
+        elasticloadbalancingv2.ListenerCondition.httpHeader('User-Agent', ['Mozilla']),
+        elasticloadbalancingv2.ListenerCondition.httpHeader('Referer', ['https://www.amazon.com/']),
+      ],
+      action: elasticloadbalancingv2.ListenerAction.forward([this.targetGroup1]),
     });
 
-    const listenerRule2 = new elasticloadbalancingv2.CfnListenerRule(this, 'ListenerRule2', {
-      actions: [
-        {
-          type: 'forward',
-          targetGroupArn: targetGroup2.ref,
-        },
-      ],
-      conditions: [
-        {
-          field: 'http-header',
-          httpHeaderConfig: {
-            httpHeaderName: 'User-Agent',
-            values: [
-              'Chrome',
-            ],
-          },
-        },
-      ],
-      listenerArn: listener.ref,
+    listener.addAction('ListenerRule2', {
       priority: 2,
+      conditions: [
+        elasticloadbalancingv2.ListenerCondition.httpHeader('User-Agent', ['Chrome']),
+      ],
+      action: elasticloadbalancingv2.ListenerAction.forward([this.targetGroup2]),
     });
 
     // Outputs
-    this.loadBalancer = loadBalancer.ref;
     new cdk.CfnOutput(this, 'CfnOutputLoadBalancer', {
-      key: 'LoadBalancer',
-      value: this.loadBalancer!.toString(),
+      value: this.loadBalancer.loadBalancerArn,
+      description: 'Load Balancer ARN',
     });
-    this.targetGroup1 = targetGroup1.ref;
+
     new cdk.CfnOutput(this, 'CfnOutputTargetGroup1', {
-      key: 'TargetGroup1',
-      value: this.targetGroup1!.toString(),
+      value: this.targetGroup1.targetGroupArn,
+      description: 'Target Group 1 ARN',
     });
-    this.targetGroup2 = targetGroup2.ref;
+
     new cdk.CfnOutput(this, 'CfnOutputTargetGroup2', {
-      key: 'TargetGroup2',
-      value: this.targetGroup2!.toString(),
+      value: this.targetGroup2.targetGroupArn,
+      description: 'Target Group 2 ARN',
     });
-    this.listenerArn = listener.ref;
+
+    this.listenerArn = listener.listenerArn;
+
     new cdk.CfnOutput(this, 'CfnOutputListenerArn', {
-      key: 'ListenerArn',
-      value: this.listenerArn!.toString(),
+      value: this.listenerArn,
+      description: 'Listener ARN',
     });
-    this.listenerRule1Arn = listenerRule1.ref;
-    new cdk.CfnOutput(this, 'CfnOutputListenerRule1Arn', {
-      key: 'ListenerRule1Arn',
-      value: this.listenerRule1Arn!.toString(),
-    });
-    this.listenerRule2Arn = listenerRule2.ref;
-    new cdk.CfnOutput(this, 'CfnOutputListenerRule2Arn', {
-      key: 'ListenerRule2Arn',
-      value: this.listenerRule2Arn!.toString(),
-    });
-    this.loadBalancersAssociatedWithTargetGroup1 = cdk.Fn.select(0, targetGroup1.attrLoadBalancerArns);
+
+    this.loadBalancersAssociatedWithTargetGroup1 = this.targetGroup1.loadBalancerArns[0];
+
     new cdk.CfnOutput(this, 'CfnOutputLoadBalancersAssociatedWithTargetGroup1', {
-      key: 'LoadBalancersAssociatedWithTargetGroup1',
-      description: 'LoadBalancers associated with TargetGroup',
-      value: this.loadBalancersAssociatedWithTargetGroup1!.toString(),
+      value: this.loadBalancersAssociatedWithTargetGroup1,
+      description: 'Load Balancers associated with Target Group 1',
     });
-    this.loadBalancersAssociatedWithTargetGroup2 = cdk.Fn.select(0, targetGroup2.attrLoadBalancerArns);
+
+    this.loadBalancersAssociatedWithTargetGroup2 = this.targetGroup2.loadBalancerArns[0];
+
     new cdk.CfnOutput(this, 'CfnOutputLoadBalancersAssociatedWithTargetGroup2', {
-      key: 'LoadBalancersAssociatedWithTargetGroup2',
-      description: 'LoadBalancers associated with TargetGroup',
-      value: this.loadBalancersAssociatedWithTargetGroup2!.toString(),
+      value: this.loadBalancersAssociatedWithTargetGroup2,
+      description: 'Load Balancers associated with Target Group 2',
     });
-    this.targetGroupFullName1 = targetGroup1.attrTargetGroupFullName;
+
+    this.targetGroupFullName1 = this.targetGroup1.targetGroupFullName;
+
     new cdk.CfnOutput(this, 'CfnOutputTargetGroupFullName1', {
-      key: 'TargetGroupFullName1',
-      description: 'FullName of TargetGroup1',
-      value: this.targetGroupFullName1!.toString(),
+      value: this.targetGroupFullName1,
+      description: 'Full Name of Target Group 1',
     });
-    this.targetGroupFullName2 = targetGroup2.attrTargetGroupFullName;
+
+    this.targetGroupFullName2 = this.targetGroup2.targetGroupFullName;
+
     new cdk.CfnOutput(this, 'CfnOutputTargetGroupFullName2', {
-      key: 'TargetGroupFullName2',
-      description: 'FullName of TargetGroup2',
-      value: this.targetGroupFullName2!.toString(),
+      value: this.targetGroupFullName2,
+      description: 'Full Name of Target Group 2',
     });
   }
 }
