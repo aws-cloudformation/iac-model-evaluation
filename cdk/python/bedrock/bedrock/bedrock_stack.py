@@ -18,116 +18,97 @@ class BedrockStack(Stack):
        # Parameters
         open_search_collection_arn = CfnParameter(self, 'OpenSearchCollectionARN',
             type='String',
-            description='OpenSearch Service Serverless (AOSS) collection ARN.',
-            default='arn:aws:aoss:us-east-1:743311230884:collection/6ye1cnrcqc2ug75erge6'
+            description='OpenSearch Service Serverless (AOSS) collection ARN.'
         )
 
         embedding_model_arn = CfnParameter(self, 'EmbeddingModelArn',
             type='String',
-            description='Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get',
-            default='arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1'
+            description='Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get'
         )
 
         aoss_index_name = CfnParameter(self, 'AOSSIndexName',
             type='String',
-            description='Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.',
-            default='ula-cr-index-name'
+            description='Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.'
         )
 
         vector_field = CfnParameter(self, 'VectorField',
             type='String',
-            description='Provide a name for the field',
-            default='ula-vector'
+            description='Provide a name for the field'
         )
 
         text_field = CfnParameter(self, 'TextField',
             type='String',
-            description='Provide additional information that a knowledge base can retrieve with vectors',
-            default='ula'
+            description='Provide additional information that a knowledge base can retrieve with vectors'
         )
 
         metadata_field = CfnParameter(self, 'MetadataField',
             type='String',
-            description='Provide additional metadata that a knowledge base can retrieve with vectors',
-            default='ula-cr-metadata'
+            description='Provide additional metadata that a knowledge base can retrieve with vectors'
         )
 
         knowledge_base_name = CfnParameter(self, 'KnowledgeBaseName',
             type='String',
-            description='The name of the knowledge base.',
-            default='bedrock-knowledgebase-tfc'
+            description='The name of the knowledge base.'
         )
 
         bedrock_execution_role_arn_for_knowledge_base = CfnParameter(self, 'BedrockExecutionRoleARNForKnowledgeBase',
             type='String',
-            description='The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.',
-            default='arn:aws:iam::743311230884:role/gfhdfgdfgdsfdfs-AmazonBedrockExecutionRoleForKnowle-7Lu5fSl2cW8J'
+            description='The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.'
         )
 
         knowledge_base_description = CfnParameter(self, 'KnowledgeBaseDescription',
             type='String',
-            description='The description of the knowledge base.',
-            default='Answer based only on information contained in knowledge base.'
+            description='The description of the knowledge base.'
         )
 
         data_source_name = CfnParameter(self, 'DataSourceName',
             type='String',
-            description='Name of the Bedrock DataSource',
-            default='bedrock-datasource-tfc'
+            description='Name of the Bedrock DataSource'
         )
 
         data_source_bucket_name = CfnParameter(self, 'DataSourceBucketName',
             type='String',
-            description='Name of the S3 bucket which stored the DataSource',
-            default='rag-sagemaker-kb-743311230884-ula'
+            description='Name of the S3 bucket which stored the DataSource'
         )
 
         agent_name = CfnParameter(self, 'AgentName',
             type='String',
-            description='Name of the Bedrock Agent',
-            default='bedrock-agent-tfc'
+            description='Name of the Bedrock Agent'
         )
 
         foundation_model_for_agent = CfnParameter(self, 'FoundationModelForAgent',
             type='String',
-            description='Foundation Model which will be used by your Bedrock Agent',
-            default='anthropic.claude-v2'
+            description='Foundation Model which will be used by your Bedrock Agent'
         )
 
         agent_instruction = CfnParameter(self, 'AgentInstruction',
             type='String',
-            description='Instruction for your Bedrock Agent',
-            default='You are a Q&A bot to answer questions on Amazon SageMaker'
+            description='Instruction for your Bedrock Agent'
         )
 
         agent_description = CfnParameter(self, 'AgentDescription',
             type='String',
-            description='Description for your Bedrock Agent',
-            default='Description is here'
+            description='Description for your Bedrock Agent'
         )
 
         agent_alias_name = CfnParameter(self, 'AgentAliasName',
             type='String',
-            description='The name of the alias of the agent',
-            default='TestAlias'
+            description='The name of the alias of the agent'
         )
 
         agent_alias_description = CfnParameter(self, 'AgentAliasDescription',
             type='String',
-            description='The description of the alias of the agent',
-            default='Alias for testing'
+            description='The description of the alias of the agent'
         )
 
         guardrail_name = CfnParameter(self, 'GuardrailName',
             type='String',
-            description='Name of the Bedrock Guardrail',
-            default='bedrock-guardrail-tfc'
+            description='Name of the Bedrock Guardrail'
         )
 
         guardrail_version_description = CfnParameter(self, 'GuardrailVersionDescription',
             type='String',
-            description='A description of the guardrail version',
-            default='my-bedrock-guardrail-cfn new version'
+            description='A description of the guardrail version'
         )
 
         # Resources
