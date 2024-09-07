@@ -1,0 +1,17 @@
+---
+Description: "Create a simple SQL Dataset"
+# IOT analytics Dataset that uses SQL Query to create DataSet contents triggered on a specific schedule.
+Resources:
+  Dataset:
+    Type: "AWS::IoTAnalytics::Dataset"
+    Properties:
+      DatasetName: "SimpleSQLDataset"
+      Actions:
+        -
+          ActionName: "SqlAction"
+          QueryAction:
+            SqlQuery: "select * from SimpleDatastore"
+      Triggers:
+        -
+          Schedule:
+            ScheduleExpression: "cron(0 12 * * ? *)"

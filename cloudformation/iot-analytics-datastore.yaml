@@ -1,0 +1,11 @@
+---
+Description: "Create a simple Datastore"
+# IOT Analytics datastore with limited Retention Period.
+Resources:
+  Datastore:
+    Type: "AWS::IoTAnalytics::Datastore"
+    Properties:
+      DatastoreName: "SimpleDatastore"
+      RetentionPeriod:
+        Unlimited: false
+        NumberOfDays: 10
