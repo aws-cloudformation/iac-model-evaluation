@@ -139,7 +139,7 @@ class BedrockStack(Stack):
         )
 
         # DataSource
-        bedrock.CfnDataSource(self, 'DataSource',
+        datasource = bedrock.CfnDataSource(self, 'DataSource',
             knowledge_base_id=knowledge_base.ref,
             name=data_source_name.value_as_string,
             data_source_configuration={
@@ -197,7 +197,7 @@ class BedrockStack(Stack):
         )
 
         # Bedrock Agent Alias
-        bedrock.CfnAgentAlias(self, 'AgentAliasResource',
+        agent_alias = bedrock.CfnAgentAlias(self, 'AgentAliasResource',
             agent_id=agent.ref,
             agent_alias_name=agent_alias_name.value_as_string,
             description=agent_alias_description.value_as_string
@@ -255,7 +255,7 @@ class BedrockStack(Stack):
         )
 
         # Bedrock Guardrail Version
-        bedrock.CfnGuardrailVersion(self, 'GuardrailVersion',
+        guardrail_version = bedrock.CfnGuardrailVersion(self, 'GuardrailVersion',
             description=guardrail_version_description.value_as_string,
             guardrail_identifier=guardrail.attr_guardrail_arn
         )
