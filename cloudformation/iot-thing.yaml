@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources: 
+  MyThing: 
+    Type: AWS::IoT::Thing 
+    Properties: 
+      ThingName: ThingName1
+      AttributePayload: 
+        Attributes:
+            myAttributeA: myStringA123 
+            myAttributeB: myStringB123 
+            myAttributeC: myStringC123

@@ -1,0 +1,13 @@
+AWSTemplateFormatVersion: '2010-09-09' 
+# IOT topic rule resource to declare an AWS IoT rule
+Resources: 
+  MyTopicRule:
+    Type: AWS::IoT::TopicRule 
+    Properties: 
+      RuleName: Rule1 
+      TopicRulePayload:
+        RuleDisabled: 'true' 
+        Sql: SELECT temp FROM 'SomeTopic' WHERE temp > 60 
+        Actions: 
+        - Lambda:
+            FunctionArn: arn:aws:lambda:us-east-1:${AWS::AccountId}:function:iot-lambda

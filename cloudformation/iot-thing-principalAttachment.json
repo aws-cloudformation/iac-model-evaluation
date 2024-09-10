@@ -1,0 +1,12 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Resources": {
+        "MyPolicyPrincipalAttachment": {
+            "Type": "AWS::IoT::ThingPrincipalAttachment",
+            "Properties": {
+                "ThingName": "ThingName1",
+                "Principal": "arn:aws:iot:us-east-1:${AWS::AccountId}:cert/db2345ef1593fb6e04a2d036d964b69d21e92828c80cc49730087a830a1d4015"
+            }
+        }
+    }
+}
