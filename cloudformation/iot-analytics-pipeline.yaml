@@ -1,0 +1,17 @@
+---
+Description: "Create a simple Pipeline"
+# IOT analytics pipeline with a channel and datastore
+Resources:
+  Pipeline:
+    Type: "AWS::IoTAnalytics::Pipeline"
+    Properties:
+      PipelineName: "SimplePipeline"
+      PipelineActivities:
+        -
+          Channel:
+            Name: "ChannelActivity"
+            ChannelName: "SimpleChannel"
+            Next: "DatastoreActivity"
+          Datastore:
+            Name: "DatastoreActivity"
+            DatastoreName: "SimpleDatastore"

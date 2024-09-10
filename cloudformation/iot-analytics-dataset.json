@@ -1,0 +1,26 @@
+{
+    "Description": "Create a simple SQL Dataset",
+    "Resources": {
+        "Dataset": {
+            "Type": "AWS::IoTAnalytics::Dataset",
+            "Properties": {
+                "DatasetName": "SimpleSQLDataset",
+                "Actions": [
+                    {
+                        "ActionName": "SqlAction",
+                        "QueryAction": {
+                            "SqlQuery": "select * from SimpleDatastore"
+                        }
+                    }
+                ],
+                "Triggers": [
+                    {
+                        "Schedule": {
+                            "ScheduleExpression": "cron(0 12 * * ? *)"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}

@@ -1,0 +1,11 @@
+---
+Description: "Create a simple Channel"
+# IOT Analytics Channel with limited Retention Period
+Resources:
+  Channel:
+    Type: "AWS::IoTAnalytics::Channel"
+    Properties:
+      ChannelName: "SimpleChannel"
+      RetentionPeriod:
+        Unlimited: false
+        NumberOfDays: 10
