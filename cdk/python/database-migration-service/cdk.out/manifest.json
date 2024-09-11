@@ -1,0 +1,239 @@
+{
+  "version": "36.0.24",
+  "artifacts": {
+    "DatabaseMigrationServiceStack.assets": {
+      "type": "cdk:asset-manifest",
+      "properties": {
+        "file": "DatabaseMigrationServiceStack.assets.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+      }
+    },
+    "DatabaseMigrationServiceStack": {
+      "type": "aws:cloudformation:stack",
+      "environment": "aws://743311230884/ap-southeast-2",
+      "properties": {
+        "templateFile": "DatabaseMigrationServiceStack.template.json",
+        "terminationProtection": false,
+        "validateOnSynth": false,
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::743311230884:role/cdk-hnb659fds-deploy-role-743311230884-ap-southeast-2",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::743311230884:role/cdk-hnb659fds-cfn-exec-role-743311230884-ap-southeast-2",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-743311230884-ap-southeast-2/87ff70838f0357883508dca2d7fe86cd58f38b97f183170f8ee29094e3050651.json",
+        "requiresBootstrapStackVersion": 6,
+        "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
+        "additionalDependencies": [
+          "DatabaseMigrationServiceStack.assets"
+        ],
+        "lookupRole": {
+          "arn": "arn:${AWS::Partition}:iam::743311230884:role/cdk-hnb659fds-lookup-role-743311230884-ap-southeast-2",
+          "requiresBootstrapStackVersion": 8,
+          "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
+        }
+      },
+      "dependencies": [
+        "DatabaseMigrationServiceStack.assets"
+      ],
+      "metadata": {
+        "/DatabaseMigrationServiceStack/DMSSubnet1": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSSubnet1"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSSubnet2": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSSubnet2"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSSecurityGroup": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSSecurityGroup"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationInstanceClass": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationInstanceClass"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationInstanceName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationInstanceName"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/SecretsManagerSecretNameforAurora": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretsManagerSecretNameforAurora"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/SecretsManagerSecretARNforMySql": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretsManagerSecretARNforMySql"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/SecretsManagerSecretARNforPostgreSql": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretsManagerSecretARNforPostgreSql"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/KmsArnEncryptSecretforMySqlDatabase": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KmsArnEncryptSecretforMySqlDatabase"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/KmsArnEncryptSecretforPostgreSqlDatabase": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "KmsArnEncryptSecretforPostgreSqlDatabase"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/PostgreSqlDatabaseName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "PostgreSqlDatabaseName"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/ServerName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ServerName"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/BucketName": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BucketName"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/ExistsDMSVPCRole": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExistsDMSVPCRole"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/ExistsDMSCloudwatchRole": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "ExistsDMSCloudwatchRole"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/NotExistsDMSVPCRole": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "NotExistsDMSVPCRole"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/NotExistsDMSCloudwatchRole": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "NotExistsDMSCloudwatchRole"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSCloudwatchRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSCloudwatchRole8A260C01"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSVpcRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSVpcRoleF0C2FA0D"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/S3TargetDMSRole/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "S3TargetDMSRoleEA639FC9"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationSubnetGroup": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationSubnetGroup"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationInstance": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationInstance"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/AuroraSourceEndpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "AuroraSourceEndpoint"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/S3TargetEndpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "S3TargetEndpoint"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/SecretsManagerAccessRoleForDatabases/Resource": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "SecretsManagerAccessRoleForDatabasesA19C7E59"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/MySQLSourceEndpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "MySQLSourceEndpoint"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/PostgreSqlTargetEndpoint": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "PostgreSqlTargetEndpoint"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationTaskFromAuroraSourcetoS3Target": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationTaskFromAuroraSourcetoS3Target"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/CDKMetadata/Default": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CDKMetadata"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/BootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "BootstrapVersion"
+          }
+        ],
+        "/DatabaseMigrationServiceStack/CheckBootstrapVersion": [
+          {
+            "type": "aws:cdk:logicalId",
+            "data": "CheckBootstrapVersion"
+          }
+        ]
+      },
+      "displayName": "DatabaseMigrationServiceStack"
+    },
+    "Tree": {
+      "type": "cdk:tree",
+      "properties": {
+        "file": "tree.json"
+      }
+    }
+  }
+}

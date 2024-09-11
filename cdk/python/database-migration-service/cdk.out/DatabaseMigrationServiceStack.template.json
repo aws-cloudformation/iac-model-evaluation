@@ -1,0 +1,514 @@
+{
+ "Parameters": {
+  "DMSSubnet1": {
+   "Type": "String",
+   "Default": "subnet-99c711d1",
+   "Description": "This will be used in DMS Replication SubnetGroup."
+  },
+  "DMSSubnet2": {
+   "Type": "String",
+   "Default": "subnet-65248103",
+   "Description": "This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1."
+  },
+  "DMSSecurityGroup": {
+   "Type": "String",
+   "Default": "sg-0af21d0643e2975c0",
+   "Description": "Specifies the VPC security group to be used with the replication instance."
+  },
+  "DMSReplicationInstanceClass": {
+   "Type": "String",
+   "Default": "dms.t3.medium",
+   "Description": "Specifies the compute and memory capacity of the replication instance."
+  },
+  "DMSReplicationInstanceName": {
+   "Type": "String",
+   "Default": "aurora-s3-repinstance-sampledb",
+   "Description": "Specifies a name for the replication instance."
+  },
+  "SecretsManagerSecretNameforAurora": {
+   "Type": "String",
+   "Default": "aurora-source-enpoint-password",
+   "Description": "Specifies a name for the replication instance."
+  },
+  "SecretsManagerSecretARNforMySql": {
+   "Type": "String",
+   "Default": "arn:aws:secretsmanager:ap-southeast-2:743311230884:secret:mysql-source-enpoint-password-wDTuWi",
+   "Description": "Specifies the ARN of the SecretsManagerSecret that contains the MySQL endpoint connection details."
+  },
+  "SecretsManagerSecretARNforPostgreSql": {
+   "Type": "String",
+   "Default": "arn:aws:secretsmanager:ap-southeast-2:743311230884:secret:rds!cluster-bd97e94b-9c47-4949-85e4-cc94e6e6c10a-ZzoS7C",
+   "Description": "Specifies the ARN of the SecretsManagerSecret that contains the PostgreSQL endpoint connection details."
+  },
+  "KmsArnEncryptSecretforMySqlDatabase": {
+   "Type": "String",
+   "Default": "arn:aws:kms:ap-southeast-2:743311230884:key/1837311a-1324-48ec-ad51-434021c0c128",
+   "Description": "Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for MySql Database."
+  },
+  "KmsArnEncryptSecretforPostgreSqlDatabase": {
+   "Type": "String",
+   "Default": "arn:aws:kms:ap-southeast-2:743311230884:key/1837311a-1324-48ec-ad51-434021c0c128",
+   "Description": "Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for PostgreSql Database."
+  },
+  "PostgreSqlDatabaseName": {
+   "Type": "String",
+   "Default": "tfc-postgresql-for-dms",
+   "Description": "Specifies the PostgreSql Database Name you want to use as Target Endpoint"
+  },
+  "ServerName": {
+   "Type": "String",
+   "Default": "tfc-aurora-for-dms.cluster-cffq5lflulbb.ap-southeast-2.rds.amazonaws.com",
+   "Description": "Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database)."
+  },
+  "BucketName": {
+   "Type": "String",
+   "Default": "jiangulanht",
+   "Description": "Specifies the BucketName to be used with the DMS target endpoint."
+  },
+  "ExistsDMSVPCRole": {
+   "Type": "String",
+   "Default": "N",
+   "AllowedPattern": "[YN]",
+   "Description": "If the dms-vpc-role exists in your account, please enter Y, else enter N.",
+   "MaxLength": 1,
+   "MinLength": 1
+  },
+  "ExistsDMSCloudwatchRole": {
+   "Type": "String",
+   "Default": "N",
+   "AllowedPattern": "[YN]",
+   "Description": "If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N.",
+   "MaxLength": 1,
+   "MinLength": 1
+  },
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Conditions": {
+  "NotExistsDMSVPCRole": {
+   "Fn::Equals": [
+    {
+     "Ref": "ExistsDMSVPCRole"
+    },
+    "N"
+   ]
+  },
+  "NotExistsDMSCloudwatchRole": {
+   "Fn::Equals": [
+    {
+     "Ref": "ExistsDMSCloudwatchRole"
+    },
+    "N"
+   ]
+  }
+ },
+ "Resources": {
+  "DMSCloudwatchRole8A260C01": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "dms.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole"
+       ]
+      ]
+     }
+    ],
+    "RoleName": "dms-cloudwatch-logs-role"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSCloudwatchRole/Resource"
+   },
+   "Condition": "NotExistsDMSCloudwatchRole"
+  },
+  "DMSVpcRoleF0C2FA0D": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "dms.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+       ]
+      ]
+     }
+    ],
+    "RoleName": "dms-vpc-role"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSVpcRole/Resource"
+   },
+   "Condition": "NotExistsDMSVPCRole"
+  },
+  "S3TargetDMSRoleEA639FC9": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "dms.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "s3:DeleteObject",
+          "s3:PutObject"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "Fn::Sub": "arn:aws:s3:::${BucketName}"
+          },
+          {
+           "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+          }
+         ]
+        },
+        {
+         "Action": "s3:ListBucket",
+         "Effect": "Allow",
+         "Resource": {
+          "Fn::Sub": "arn:aws:s3:::${BucketName}"
+         }
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "S3AccessForDMSPolicy"
+     }
+    ],
+    "RoleName": "dms-s3-target-role"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/S3TargetDMSRole/Resource"
+   }
+  },
+  "DMSReplicationSubnetGroup": {
+   "Type": "AWS::DMS::ReplicationSubnetGroup",
+   "Properties": {
+    "ReplicationSubnetGroupDescription": "Subnets available for DMS",
+    "SubnetIds": [
+     {
+      "Ref": "DMSSubnet1"
+     },
+     {
+      "Ref": "DMSSubnet2"
+     }
+    ]
+   },
+   "DependsOn": [
+    "S3TargetDMSRoleEA639FC9"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSReplicationSubnetGroup"
+   }
+  },
+  "DMSReplicationInstance": {
+   "Type": "AWS::DMS::ReplicationInstance",
+   "Properties": {
+    "MultiAZ": true,
+    "PubliclyAccessible": false,
+    "ReplicationInstanceClass": {
+     "Ref": "DMSReplicationInstanceClass"
+    },
+    "ReplicationInstanceIdentifier": {
+     "Ref": "DMSReplicationInstanceName"
+    },
+    "ReplicationSubnetGroupIdentifier": {
+     "Ref": "DMSReplicationSubnetGroup"
+    },
+    "VpcSecurityGroupIds": [
+     {
+      "Ref": "DMSSecurityGroup"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSReplicationInstance"
+   }
+  },
+  "AuroraSourceEndpoint": {
+   "Type": "AWS::DMS::Endpoint",
+   "Properties": {
+    "EndpointType": "source",
+    "EngineName": "aurora",
+    "Password": {
+     "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:password}}"
+    },
+    "Port": 3306,
+    "ServerName": {
+     "Ref": "ServerName"
+    },
+    "Username": {
+     "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:username}}"
+    }
+   },
+   "DependsOn": [
+    "DMSReplicationInstance"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/AuroraSourceEndpoint"
+   }
+  },
+  "S3TargetEndpoint": {
+   "Type": "AWS::DMS::Endpoint",
+   "Properties": {
+    "EndpointType": "target",
+    "EngineName": "s3",
+    "ExtraConnectionAttributes": "addColumnName=true",
+    "S3Settings": {
+     "BucketName": {
+      "Ref": "BucketName"
+     },
+     "ServiceAccessRoleArn": {
+      "Fn::GetAtt": [
+       "S3TargetDMSRoleEA639FC9",
+       "Arn"
+      ]
+     }
+    }
+   },
+   "DependsOn": [
+    "DMSReplicationInstance"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/S3TargetEndpoint"
+   }
+  },
+  "SecretsManagerAccessRoleForDatabasesA19C7E59": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": {
+         "Fn::Sub": "dms.${AWS::Region}.amazonaws.com"
+        }
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Policies": [
+     {
+      "PolicyDocument": {
+       "Statement": [
+        {
+         "Action": [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+         ],
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "Ref": "KmsArnEncryptSecretforMySqlDatabase"
+          },
+          {
+           "Ref": "KmsArnEncryptSecretforPostgreSqlDatabase"
+          }
+         ]
+        },
+        {
+         "Action": "secretsmanager:GetSecretValue",
+         "Effect": "Allow",
+         "Resource": [
+          {
+           "Ref": "SecretsManagerSecretARNforMySql"
+          },
+          {
+           "Ref": "SecretsManagerSecretARNforPostgreSql"
+          }
+         ]
+        }
+       ],
+       "Version": "2012-10-17"
+      },
+      "PolicyName": "SecretsManagerPolicy"
+     }
+    ],
+    "RoleName": "dms-secret-manager-access-role"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/SecretsManagerAccessRoleForDatabases/Resource"
+   }
+  },
+  "MySQLSourceEndpoint": {
+   "Type": "AWS::DMS::Endpoint",
+   "Properties": {
+    "EndpointType": "source",
+    "EngineName": "mysql",
+    "MySqlSettings": {
+     "SecretsManagerAccessRoleArn": {
+      "Fn::GetAtt": [
+       "SecretsManagerAccessRoleForDatabasesA19C7E59",
+       "Arn"
+      ]
+     },
+     "SecretsManagerSecretId": {
+      "Ref": "SecretsManagerSecretARNforMySql"
+     }
+    }
+   },
+   "DependsOn": [
+    "DMSReplicationInstance"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/MySQLSourceEndpoint"
+   }
+  },
+  "PostgreSqlTargetEndpoint": {
+   "Type": "AWS::DMS::Endpoint",
+   "Properties": {
+    "DatabaseName": {
+     "Ref": "PostgreSqlDatabaseName"
+    },
+    "EndpointType": "target",
+    "EngineName": "postgres",
+    "PostgreSqlSettings": {
+     "SecretsManagerAccessRoleArn": {
+      "Fn::GetAtt": [
+       "SecretsManagerAccessRoleForDatabasesA19C7E59",
+       "Arn"
+      ]
+     },
+     "SecretsManagerSecretId": {
+      "Ref": "SecretsManagerSecretARNforPostgreSql"
+     }
+    }
+   },
+   "DependsOn": [
+    "DMSReplicationInstance"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/PostgreSqlTargetEndpoint"
+   }
+  },
+  "DMSReplicationTaskFromAuroraSourcetoS3Target": {
+   "Type": "AWS::DMS::ReplicationTask",
+   "Properties": {
+    "MigrationType": "full-load-and-cdc",
+    "ReplicationInstanceArn": {
+     "Ref": "DMSReplicationInstance"
+    },
+    "ReplicationTaskSettings": "{\"Logging\": {\"EnableLogging\": true, \"LogComponents\": [{\"Id\": \"SOURCE_UNLOAD\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"SOURCE_CAPTURE\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"TARGET_LOAD\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"TARGET_APPLY\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}]}}",
+    "SourceEndpointArn": {
+     "Ref": "AuroraSourceEndpoint"
+    },
+    "TableMappings": "{\"rules\": [{\"rule-type\": \"selection\", \"rule-id\": \"1\", \"rule-name\": \"1\", \"object-locator\": {\"schema-name\": \"%\", \"table-name\": \"%\"}, \"rule-action\": \"include\"}]}",
+    "TargetEndpointArn": {
+     "Ref": "S3TargetEndpoint"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSReplicationTaskFromAuroraSourcetoS3Target"
+   }
+  },
+  "DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget": {
+   "Type": "AWS::DMS::ReplicationTask",
+   "Properties": {
+    "MigrationType": "full-load",
+    "ReplicationInstanceArn": {
+     "Ref": "DMSReplicationInstance"
+    },
+    "ReplicationTaskSettings": "{\"FullLoadSettings\": {\"CommitRate\": 10000, \"TargetTablePrepMode\": \"DROP_AND_CREATE\", \"CreatePkAfterFullLoad\": true}, \"BeforeImageSettings\": null, \"ControlTablesSettings\": {\"historyTimeslotInMinutes\": 5, \"HistoryTimeslotInMinutes\": 5}}",
+    "SourceEndpointArn": {
+     "Ref": "MySQLSourceEndpoint"
+    },
+    "TableMappings": "{\"rules\": [{\"rule-type\": \"selection\", \"rule-id\": \"1\", \"rule-name\": \"1\", \"object-locator\": {\"schema-name\": \"%\", \"table-name\": \"%\"}, \"rule-action\": \"include\"}]}",
+    "TargetEndpointArn": {
+     "Ref": "PostgreSqlTargetEndpoint"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/12LywrCMBREv6X7NFrFgusi4q607uU2iXhtc1PyoEjIv0ssLnQ1M5wzO14dar4tYHGlkGM54cBj70GMrLlTCxa08srm0RiS6NEQg8XdIoLmsTOTyixnYlI7HvNS84QCstuHgZQ/WxNm9ksu5DyQ+NxPJGeD5P+UK7gxJdYpZ4JdzW9PrH35h6HNnh95VRdPh1jaQB614t2ab5VYXwPcAAAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "DatabaseMigrationServiceStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

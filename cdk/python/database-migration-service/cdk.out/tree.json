@@ -1,0 +1,684 @@
+{
+  "version": "tree-0.1",
+  "tree": {
+    "id": "App",
+    "path": "",
+    "children": {
+      "DatabaseMigrationServiceStack": {
+        "id": "DatabaseMigrationServiceStack",
+        "path": "DatabaseMigrationServiceStack",
+        "children": {
+          "DMSSubnet1": {
+            "id": "DMSSubnet1",
+            "path": "DatabaseMigrationServiceStack/DMSSubnet1",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "DMSSubnet2": {
+            "id": "DMSSubnet2",
+            "path": "DatabaseMigrationServiceStack/DMSSubnet2",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "DMSSecurityGroup": {
+            "id": "DMSSecurityGroup",
+            "path": "DatabaseMigrationServiceStack/DMSSecurityGroup",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationInstanceClass": {
+            "id": "DMSReplicationInstanceClass",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationInstanceClass",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationInstanceName": {
+            "id": "DMSReplicationInstanceName",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationInstanceName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "SecretsManagerSecretNameforAurora": {
+            "id": "SecretsManagerSecretNameforAurora",
+            "path": "DatabaseMigrationServiceStack/SecretsManagerSecretNameforAurora",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "SecretsManagerSecretARNforMySql": {
+            "id": "SecretsManagerSecretARNforMySql",
+            "path": "DatabaseMigrationServiceStack/SecretsManagerSecretARNforMySql",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "SecretsManagerSecretARNforPostgreSql": {
+            "id": "SecretsManagerSecretARNforPostgreSql",
+            "path": "DatabaseMigrationServiceStack/SecretsManagerSecretARNforPostgreSql",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "KmsArnEncryptSecretforMySqlDatabase": {
+            "id": "KmsArnEncryptSecretforMySqlDatabase",
+            "path": "DatabaseMigrationServiceStack/KmsArnEncryptSecretforMySqlDatabase",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "KmsArnEncryptSecretforPostgreSqlDatabase": {
+            "id": "KmsArnEncryptSecretforPostgreSqlDatabase",
+            "path": "DatabaseMigrationServiceStack/KmsArnEncryptSecretforPostgreSqlDatabase",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "PostgreSqlDatabaseName": {
+            "id": "PostgreSqlDatabaseName",
+            "path": "DatabaseMigrationServiceStack/PostgreSqlDatabaseName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "ServerName": {
+            "id": "ServerName",
+            "path": "DatabaseMigrationServiceStack/ServerName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "BucketName": {
+            "id": "BucketName",
+            "path": "DatabaseMigrationServiceStack/BucketName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "ExistsDMSVPCRole": {
+            "id": "ExistsDMSVPCRole",
+            "path": "DatabaseMigrationServiceStack/ExistsDMSVPCRole",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "ExistsDMSCloudwatchRole": {
+            "id": "ExistsDMSCloudwatchRole",
+            "path": "DatabaseMigrationServiceStack/ExistsDMSCloudwatchRole",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "NotExistsDMSVPCRole": {
+            "id": "NotExistsDMSVPCRole",
+            "path": "DatabaseMigrationServiceStack/NotExistsDMSVPCRole",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnCondition",
+              "version": "2.156.0"
+            }
+          },
+          "NotExistsDMSCloudwatchRole": {
+            "id": "NotExistsDMSCloudwatchRole",
+            "path": "DatabaseMigrationServiceStack/NotExistsDMSCloudwatchRole",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnCondition",
+              "version": "2.156.0"
+            }
+          },
+          "DMSCloudwatchRole": {
+            "id": "DMSCloudwatchRole",
+            "path": "DatabaseMigrationServiceStack/DMSCloudwatchRole",
+            "children": {
+              "ImportDMSCloudwatchRole": {
+                "id": "ImportDMSCloudwatchRole",
+                "path": "DatabaseMigrationServiceStack/DMSCloudwatchRole/ImportDMSCloudwatchRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.156.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "DatabaseMigrationServiceStack/DMSCloudwatchRole/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "dms.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "managedPolicyArns": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole"
+                          ]
+                        ]
+                      }
+                    ],
+                    "roleName": "dms-cloudwatch-logs-role"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.156.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.156.0"
+            }
+          },
+          "DMSVpcRole": {
+            "id": "DMSVpcRole",
+            "path": "DatabaseMigrationServiceStack/DMSVpcRole",
+            "children": {
+              "ImportDMSVpcRole": {
+                "id": "ImportDMSVpcRole",
+                "path": "DatabaseMigrationServiceStack/DMSVpcRole/ImportDMSVpcRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.156.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "DatabaseMigrationServiceStack/DMSVpcRole/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "dms.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "managedPolicyArns": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+                          ]
+                        ]
+                      }
+                    ],
+                    "roleName": "dms-vpc-role"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.156.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.156.0"
+            }
+          },
+          "S3TargetDMSRole": {
+            "id": "S3TargetDMSRole",
+            "path": "DatabaseMigrationServiceStack/S3TargetDMSRole",
+            "children": {
+              "ImportS3TargetDMSRole": {
+                "id": "ImportS3TargetDMSRole",
+                "path": "DatabaseMigrationServiceStack/S3TargetDMSRole/ImportS3TargetDMSRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.156.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "DatabaseMigrationServiceStack/S3TargetDMSRole/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "dms.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "policies": [
+                      {
+                        "policyName": "S3AccessForDMSPolicy",
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "s3:DeleteObject",
+                                "s3:PutObject"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                {
+                                  "Fn::Sub": "arn:aws:s3:::${BucketName}"
+                                },
+                                {
+                                  "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+                                }
+                              ]
+                            },
+                            {
+                              "Action": "s3:ListBucket",
+                              "Effect": "Allow",
+                              "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${BucketName}"
+                              }
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    ],
+                    "roleName": "dms-s3-target-role"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.156.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationSubnetGroup": {
+            "id": "DMSReplicationSubnetGroup",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationSubnetGroup",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::ReplicationSubnetGroup",
+              "aws:cdk:cloudformation:props": {
+                "replicationSubnetGroupDescription": "Subnets available for DMS",
+                "subnetIds": [
+                  {
+                    "Ref": "DMSSubnet1"
+                  },
+                  {
+                    "Ref": "DMSSubnet2"
+                  }
+                ]
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnReplicationSubnetGroup",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationInstance": {
+            "id": "DMSReplicationInstance",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationInstance",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::ReplicationInstance",
+              "aws:cdk:cloudformation:props": {
+                "multiAz": true,
+                "publiclyAccessible": false,
+                "replicationInstanceClass": {
+                  "Ref": "DMSReplicationInstanceClass"
+                },
+                "replicationInstanceIdentifier": {
+                  "Ref": "DMSReplicationInstanceName"
+                },
+                "replicationSubnetGroupIdentifier": {
+                  "Ref": "DMSReplicationSubnetGroup"
+                },
+                "vpcSecurityGroupIds": [
+                  {
+                    "Ref": "DMSSecurityGroup"
+                  }
+                ]
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnReplicationInstance",
+              "version": "2.156.0"
+            }
+          },
+          "AuroraSourceEndpoint": {
+            "id": "AuroraSourceEndpoint",
+            "path": "DatabaseMigrationServiceStack/AuroraSourceEndpoint",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::Endpoint",
+              "aws:cdk:cloudformation:props": {
+                "endpointType": "source",
+                "engineName": "aurora",
+                "password": {
+                  "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:password}}"
+                },
+                "port": 3306,
+                "serverName": {
+                  "Ref": "ServerName"
+                },
+                "username": {
+                  "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:username}}"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnEndpoint",
+              "version": "2.156.0"
+            }
+          },
+          "S3TargetEndpoint": {
+            "id": "S3TargetEndpoint",
+            "path": "DatabaseMigrationServiceStack/S3TargetEndpoint",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::Endpoint",
+              "aws:cdk:cloudformation:props": {
+                "endpointType": "target",
+                "engineName": "s3",
+                "extraConnectionAttributes": "addColumnName=true",
+                "s3Settings": {
+                  "bucketName": {
+                    "Ref": "BucketName"
+                  },
+                  "serviceAccessRoleArn": {
+                    "Fn::GetAtt": [
+                      "S3TargetDMSRoleEA639FC9",
+                      "Arn"
+                    ]
+                  }
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnEndpoint",
+              "version": "2.156.0"
+            }
+          },
+          "SecretsManagerAccessRoleForDatabases": {
+            "id": "SecretsManagerAccessRoleForDatabases",
+            "path": "DatabaseMigrationServiceStack/SecretsManagerAccessRoleForDatabases",
+            "children": {
+              "ImportSecretsManagerAccessRoleForDatabases": {
+                "id": "ImportSecretsManagerAccessRoleForDatabases",
+                "path": "DatabaseMigrationServiceStack/SecretsManagerAccessRoleForDatabases/ImportSecretsManagerAccessRoleForDatabases",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.156.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "DatabaseMigrationServiceStack/SecretsManagerAccessRoleForDatabases/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": {
+                              "Fn::Sub": "dms.${AWS::Region}.amazonaws.com"
+                            }
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "policies": [
+                      {
+                        "policyName": "SecretsManagerPolicy",
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "kms:Decrypt",
+                                "kms:DescribeKey"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                {
+                                  "Ref": "KmsArnEncryptSecretforMySqlDatabase"
+                                },
+                                {
+                                  "Ref": "KmsArnEncryptSecretforPostgreSqlDatabase"
+                                }
+                              ]
+                            },
+                            {
+                              "Action": "secretsmanager:GetSecretValue",
+                              "Effect": "Allow",
+                              "Resource": [
+                                {
+                                  "Ref": "SecretsManagerSecretARNforMySql"
+                                },
+                                {
+                                  "Ref": "SecretsManagerSecretARNforPostgreSql"
+                                }
+                              ]
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    ],
+                    "roleName": "dms-secret-manager-access-role"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.156.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.156.0"
+            }
+          },
+          "MySQLSourceEndpoint": {
+            "id": "MySQLSourceEndpoint",
+            "path": "DatabaseMigrationServiceStack/MySQLSourceEndpoint",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::Endpoint",
+              "aws:cdk:cloudformation:props": {
+                "endpointType": "source",
+                "engineName": "mysql",
+                "mySqlSettings": {
+                  "secretsManagerAccessRoleArn": {
+                    "Fn::GetAtt": [
+                      "SecretsManagerAccessRoleForDatabasesA19C7E59",
+                      "Arn"
+                    ]
+                  },
+                  "secretsManagerSecretId": {
+                    "Ref": "SecretsManagerSecretARNforMySql"
+                  }
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnEndpoint",
+              "version": "2.156.0"
+            }
+          },
+          "PostgreSqlTargetEndpoint": {
+            "id": "PostgreSqlTargetEndpoint",
+            "path": "DatabaseMigrationServiceStack/PostgreSqlTargetEndpoint",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::Endpoint",
+              "aws:cdk:cloudformation:props": {
+                "databaseName": {
+                  "Ref": "PostgreSqlDatabaseName"
+                },
+                "endpointType": "target",
+                "engineName": "postgres",
+                "postgreSqlSettings": {
+                  "secretsManagerAccessRoleArn": {
+                    "Fn::GetAtt": [
+                      "SecretsManagerAccessRoleForDatabasesA19C7E59",
+                      "Arn"
+                    ]
+                  },
+                  "secretsManagerSecretId": {
+                    "Ref": "SecretsManagerSecretARNforPostgreSql"
+                  }
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnEndpoint",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationTaskFromAuroraSourcetoS3Target": {
+            "id": "DMSReplicationTaskFromAuroraSourcetoS3Target",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationTaskFromAuroraSourcetoS3Target",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::ReplicationTask",
+              "aws:cdk:cloudformation:props": {
+                "migrationType": "full-load-and-cdc",
+                "replicationInstanceArn": {
+                  "Ref": "DMSReplicationInstance"
+                },
+                "replicationTaskSettings": "{\"Logging\": {\"EnableLogging\": true, \"LogComponents\": [{\"Id\": \"SOURCE_UNLOAD\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"SOURCE_CAPTURE\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"TARGET_LOAD\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}, {\"Id\": \"TARGET_APPLY\", \"Severity\": \"LOGGER_SEVERITY_DEFAULT\"}]}}",
+                "sourceEndpointArn": {
+                  "Ref": "AuroraSourceEndpoint"
+                },
+                "tableMappings": "{\"rules\": [{\"rule-type\": \"selection\", \"rule-id\": \"1\", \"rule-name\": \"1\", \"object-locator\": {\"schema-name\": \"%\", \"table-name\": \"%\"}, \"rule-action\": \"include\"}]}",
+                "targetEndpointArn": {
+                  "Ref": "S3TargetEndpoint"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnReplicationTask",
+              "version": "2.156.0"
+            }
+          },
+          "DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget": {
+            "id": "DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget",
+            "path": "DatabaseMigrationServiceStack/DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::DMS::ReplicationTask",
+              "aws:cdk:cloudformation:props": {
+                "migrationType": "full-load",
+                "replicationInstanceArn": {
+                  "Ref": "DMSReplicationInstance"
+                },
+                "replicationTaskSettings": "{\"FullLoadSettings\": {\"CommitRate\": 10000, \"TargetTablePrepMode\": \"DROP_AND_CREATE\", \"CreatePkAfterFullLoad\": true}, \"BeforeImageSettings\": null, \"ControlTablesSettings\": {\"historyTimeslotInMinutes\": 5, \"HistoryTimeslotInMinutes\": 5}}",
+                "sourceEndpointArn": {
+                  "Ref": "MySQLSourceEndpoint"
+                },
+                "tableMappings": "{\"rules\": [{\"rule-type\": \"selection\", \"rule-id\": \"1\", \"rule-name\": \"1\", \"object-locator\": {\"schema-name\": \"%\", \"table-name\": \"%\"}, \"rule-action\": \"include\"}]}",
+                "targetEndpointArn": {
+                  "Ref": "PostgreSqlTargetEndpoint"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dms.CfnReplicationTask",
+              "version": "2.156.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "DatabaseMigrationServiceStack/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "DatabaseMigrationServiceStack/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.156.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.3.0"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "DatabaseMigrationServiceStack/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.156.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "DatabaseMigrationServiceStack/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.156.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.156.0"
+        }
+      },
+      "Tree": {
+        "id": "Tree",
+        "path": "Tree",
+        "constructInfo": {
+          "fqn": "constructs.Construct",
+          "version": "10.3.0"
+        }
+      }
+    },
+    "constructInfo": {
+      "fqn": "aws-cdk-lib.App",
+      "version": "2.156.0"
+    }
+  }
+}
