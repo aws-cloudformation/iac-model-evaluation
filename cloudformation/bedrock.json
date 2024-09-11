@@ -1,4 +1,4 @@
-{   "Description": "This stack automates the creation of Bedrock Knowledge Base, Data Source, \nAgent, AgentAlias, Guardrail and GuardrailVersion",
+{   "Description": "This stack automates the creation of Bedrock Knowledge Base, Data Source, \nAgent, AgentAlias, Guardrail and GuardrailVersion. \n",
     "Parameters": {
         "OpenSearchCollectionARN": {
             "Description": "OpenSearch Service Serverless (AOSS) collection ARN.",
