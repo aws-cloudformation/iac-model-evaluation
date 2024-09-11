@@ -11,79 +11,66 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
     // Parameters
     const dmsSubnet1 = new cdk.CfnParameter(this, 'DMSSubnet1', {
       type: 'String',
-      default: 'subnet-99c711d1',
       description: 'This will be used in DMS Replication SubnetGroup.'
     });
 
     const dmsSubnet2 = new cdk.CfnParameter(this, 'DMSSubnet2', {
       type: 'String',
-      default: 'subnet-65248103',
       description: 'This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1.'
     });
 
     const dmsSecurityGroup = new cdk.CfnParameter(this, 'DMSSecurityGroup', {
       type: 'String',
-      default: 'sg-0af21d0643e2975c0',
       description: 'Specifies the VPC security group to be used with the replication instance.'
     });
 
     const dmsInstanceClass = new cdk.CfnParameter(this, 'DMSReplicationInstanceClass', {
       type: 'String',
-      default: 'dms.t3.medium',
       description: 'Specifies the compute and memory capacity of the replication instance.'
     });
 
     const dmsInstanceName = new cdk.CfnParameter(this, 'DMSReplicationInstanceName', {
       type: 'String',
-      default: 'aurora-s3-repinstance-sampledb',
       description: 'Specifies a name for the replication instance.'
     });
     
     const secretsManagerSecretNameForAurora = new cdk.CfnParameter(this, 'SecretsManagerSecretNameforAurora', {
       type: 'String',
-      default: 'aurora-source-enpoint-password',
       description: 'Specifies a name for the replication instance.',
     });
 
     const secretsManagerMysqlArn = new cdk.CfnParameter(this, 'SecretsManagerSecretARNforMySql', {
       type: 'String',
-      default: 'arn:aws:secretsmanager:ap-southeast-2:743311230884:secret:mysql-source-enpoint-password-wDTuWi',
       description: 'Specifies the ARN of the SecretsManagerSecret that contains the MySQL endpoint connection details.'
     });
 
     const secretsManagerPostgresqlArn = new cdk.CfnParameter(this, 'SecretsManagerSecretARNforPostgreSql', {
       type: 'String',
-      default: 'arn:aws:secretsmanager:ap-southeast-2:743311230884:secret:rds!cluster-bd97e94b-9c47-4949-85e4-cc94e6e6c10a-ZzoS7C',
       description: 'Specifies the ARN of the SecretsManagerSecret that contains the PostgreSQL endpoint connection details.'
     });
     
     const kmsArnEncryptSecretForMySql = new cdk.CfnParameter(this, 'KmsArnEncryptSecretforMySqlDatabase', {
       type: 'String',
-      default: 'arn:aws:kms:ap-southeast-2:743311230884:key/1837311a-1324-48ec-ad51-434021c0c128',
       description: 'Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for MySql Database.',
     });
 
     const kmsArnEncryptSecretForPostgresql = new cdk.CfnParameter(this, 'KmsArnEncryptSecretforPostgreSqlDatabase', {
       type: 'String',
-      default: 'arn:aws:kms:ap-southeast-2:743311230884:key/1837311a-1324-48ec-ad51-434021c0c128',
       description: 'Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for PostgreSql Database.',
     });
 
     const postgresqlDatabaseName = new cdk.CfnParameter(this, 'PostgreSqlDatabaseName', {
       type: 'String',
-      default: 'tfc-postgresql-for-dms',
       description: 'Specifies the PostgreSql Database Name you want to use as Target Endpoint',
     });
 
     const serverName = new cdk.CfnParameter(this, 'ServerName', {
       type: 'String',
-      default: 'tfc-aurora-for-dms.cluster-cffq5lflulbb.ap-southeast-2.rds.amazonaws.com',
       description: 'Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database).'
     });
 
     const bucketName = new cdk.CfnParameter(this, 'BucketName', {
       type: 'String',
-      default: 'jiangulanht',
       description: 'Specifies the BucketName to be used with the DMS target endpoint.'
     });
 
