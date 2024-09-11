@@ -1,0 +1,15 @@
+{
+    "Description": "Create a simple Datastore",
+    "Resources": {
+        "Datastore": {
+            "Type": "AWS::IoTAnalytics::Datastore",
+            "Properties": {
+                "DatastoreName": "SimpleDatastore",
+                "RetentionPeriod": {
+                    "Unlimited": false,
+                    "NumberOfDays": 10
+                }
+            }
+        }
+    }
+}

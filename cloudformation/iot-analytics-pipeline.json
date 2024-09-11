@@ -1,0 +1,24 @@
+{
+    "Description": "Create a simple Pipeline",
+    "Resources": {
+        "Pipeline": {
+            "Type": "AWS::IoTAnalytics::Pipeline",
+            "Properties": {
+                "PipelineName": "SimplePipeline",
+                "PipelineActivities": [
+                    {
+                        "Channel": {
+                            "Name": "ChannelActivity",
+                            "ChannelName": "SimpleChannel",
+                            "Next": "DatastoreActivity"
+                        },
+                        "Datastore": {
+                            "Name": "DatastoreActivity",
+                            "DatastoreName": "SimpleDatastore"
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}

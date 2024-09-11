@@ -1,0 +1,145 @@
+Parameters:
+  CidrBlockForVPC:
+    Default: 186.0.0.0/24
+    Description: CidrBlockForVPC
+    Type: String
+  CidrBlockForSubnet1:
+    Default: 186.0.0.0/25
+    Description: Cidr Block For Subnet1
+    Type: String
+  CidrBlockForSubnet2:
+    Default: 186.0.0.128/25
+    Description: Cidr Block For Subnet2
+    Type: String
+  AvailabilityZoneForSubnet1:
+    Default: us-east-1c
+    Description: AvailabilityZone For Subnet1
+    Type: String
+  AvailabilityZoneForSubnet2:
+    Default: us-east-1b
+    Description: AvailabilityZone For Subnet2
+    Type: String
+Resources:
+# Creating VPC with custom CIDR
+  VPC:
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref CidrBlockForVPC
+# Creating Subnet1 with custom CIDR
+  Subnet1:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZoneForSubnet1
+      CidrBlock: !Ref CidrBlockForSubnet1
+# Creating Subnet1 with custom CIDR
+  Subnet2:
+    Type: 'AWS::EC2::Subnet'
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Ref AvailabilityZoneForSubnet2
+      CidrBlock: !Ref CidrBlockForSubnet2
+# Creating Load BalancerV2 in desired subnet with custom CIDR
+  LoadBalancer:
+    Type: 'AWS::ElasticLoadBalancingV2::LoadBalancer'
+    Properties:
+      Scheme: internal
+      Subnets:
+        - !Ref Subnet1
+        - !Ref Subnet2
+# Creating Target Group 1 on custom port
+  TargetGroup1:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Port: 1000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+# Creating Target Group 1 on custom port
+  TargetGroup2:
+    Type: 'AWS::ElasticLoadBalancingV2::TargetGroup'
+    Properties:
+      Port: 2000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+# Creating Listener Rule for Target Group 1
+  ListenerRule1:
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup1
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: User-Agent
+            Values:
+              - Mozilla
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: Referer
+            Values:
+              - 'https://www.amazon.com/'
+      ListenerArn: !Ref Listener
+      Priority: 1
+# Creating Listener Rule for Target Group 2
+  ListenerRule2:
+    Type: 'AWS::ElasticLoadBalancingV2::ListenerRule'
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup2
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: User-Agent
+            Values:
+              - Chrome
+      ListenerArn: !Ref Listener
+      Priority: 2
+# Creating HTTP Listener on port 8000
+  Listener:
+    Type: 'AWS::ElasticLoadBalancingV2::Listener'
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup1
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: '8000'
+      Protocol: HTTP
+Outputs:
+  LoadBalancer:
+    Value: !Ref LoadBalancer
+  TargetGroup1:
+    Value: !Ref TargetGroup1
+  TargetGroup2:
+    Value: !Ref TargetGroup2
+  ListenerArn:
+    Value: !Ref Listener
+  ListenerRule1Arn:
+    Value: !Ref ListenerRule1
+  ListenerRule2Arn:
+    Value: !Ref ListenerRule2
+  LoadBalancersAssociatedWithTargetGroup1:
+    Description: LoadBalancers associated with TargetGroup
+    Value: !Select 
+      - '0'
+      - !GetAtt 
+        - TargetGroup1
+        - LoadBalancerArns
+  LoadBalancersAssociatedWithTargetGroup2:
+    Description: LoadBalancers associated with TargetGroup
+    Value: !Select 
+      - '0'
+      - !GetAtt 
+        - TargetGroup2
+        - LoadBalancerArns
+  TargetGroupFullName1:
+    Description: FullName of TargetGroup1
+    Value: !GetAtt 
+      - TargetGroup1
+      - TargetGroupFullName
+  TargetGroupFullName2:
+    Description: FullName of TargetGroup2
+    Value: !GetAtt 
+      - TargetGroup2
+      - TargetGroupFullName
