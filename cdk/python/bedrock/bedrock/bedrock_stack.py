@@ -16,123 +16,87 @@ class BedrockStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
        # Parameters
-        open_search_collection_arn = CfnParameter(self, 'OpenSearchCollectionARN',
-            type='String',
-            description='OpenSearch Service Serverless (AOSS) collection ARN.'
-        )
-
-        embedding_model_arn = CfnParameter(self, 'EmbeddingModelArn',
-            type='String',
-            description='Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get'
-        )
-
-        aoss_index_name = CfnParameter(self, 'AOSSIndexName',
-            type='String',
-            description='Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.'
-        )
-
-        vector_field = CfnParameter(self, 'VectorField',
-            type='String',
-            description='Provide a name for the field'
-        )
-
-        text_field = CfnParameter(self, 'TextField',
-            type='String',
-            description='Provide additional information that a knowledge base can retrieve with vectors'
-        )
-
-        metadata_field = CfnParameter(self, 'MetadataField',
-            type='String',
-            description='Provide additional metadata that a knowledge base can retrieve with vectors'
-        )
-
-        knowledge_base_name = CfnParameter(self, 'KnowledgeBaseName',
-            type='String',
-            description='The name of the knowledge base.'
-        )
-
-        bedrock_execution_role_arn_for_knowledge_base = CfnParameter(self, 'BedrockExecutionRoleARNForKnowledgeBase',
-            type='String',
-            description='The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.'
-        )
-
-        knowledge_base_description = CfnParameter(self, 'KnowledgeBaseDescription',
-            type='String',
-            description='The description of the knowledge base.'
-        )
-
-        data_source_name = CfnParameter(self, 'DataSourceName',
-            type='String',
-            description='Name of the Bedrock DataSource'
-        )
-
-        data_source_bucket_name = CfnParameter(self, 'DataSourceBucketName',
-            type='String',
-            description='Name of the S3 bucket which stored the DataSource'
-        )
-
-        agent_name = CfnParameter(self, 'AgentName',
-            type='String',
-            description='Name of the Bedrock Agent'
-        )
-
-        foundation_model_for_agent = CfnParameter(self, 'FoundationModelForAgent',
-            type='String',
-            description='Foundation Model which will be used by your Bedrock Agent'
-        )
-
-        agent_instruction = CfnParameter(self, 'AgentInstruction',
-            type='String',
-            description='Instruction for your Bedrock Agent'
-        )
-
-        agent_description = CfnParameter(self, 'AgentDescription',
-            type='String',
-            description='Description for your Bedrock Agent'
-        )
-
-        agent_alias_name = CfnParameter(self, 'AgentAliasName',
-            type='String',
-            description='The name of the alias of the agent'
-        )
-
-        agent_alias_description = CfnParameter(self, 'AgentAliasDescription',
-            type='String',
-            description='The description of the alias of the agent'
-        )
-
-        guardrail_name = CfnParameter(self, 'GuardrailName',
-            type='String',
-            description='Name of the Bedrock Guardrail'
-        )
-
-        guardrail_version_description = CfnParameter(self, 'GuardrailVersionDescription',
-            type='String',
-            description='A description of the guardrail version'
-        )
+       
+        #OpenSearch Service Serverless (AOSS) collection ARN.'
+        open_search_collection_arn = 'arn:aws:aoss:us-east-1:<account_id>:collection/<uuid>'; 
+    
+        #Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get'
+        embedding_model_arn = 'arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1'; 
+    
+        #Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.
+        aoss_index_name = 'sample-index-name';
+    
+        #Provide a name for the field
+        vector_field = 'sample-vector';
+    
+        #Provide additional information that a knowledge base can retrieve with vectors
+        text_field = 'sample-text-filed';
+    
+        #Provide additional metadata that a knowledge base can retrieve with vectors
+        metadata_field = 'sample-metadata';
+        
+        #The name of the knowledge base
+        knowledge_base_name = 'sample-bedrock-knowledgebase';
+    
+        #The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy
+        bedrock_execution_role_arn_for_knowledge_base = 'arn:aws:iam::<account_id>:role/<role-name>';
+        
+        #The description of the knowledge base
+        knowledge_base_description = 'Answer based only on information contained in knowledge base';
+        
+        #Name of the Bedrock DataSource
+        data_source_name = 'sample-bedrock-datasourc';
+        
+        #Name of the S3 bucket which stored the DataSource
+        data_source_bucket_name = 'sample-bucket-name';
+        
+        #Name of the Bedrock Agent
+        agent_name = 'sample-agent-name';
+    
+        #Foundation Model which will be used by your Bedrock Agent
+        foundation_model_for_agent = 'anthropic.claude-v2';
+        
+        #Instruction for your Bedrock Agent
+        agent_instruction = 'You are a Q&A bot to answer questions on Amazon SageMaker';
+    
+        #Description for your Bedrock Agent
+        agent_description = 'Agent description is here';
+        
+        #The name of the alias of the agent
+        agent_alias_name = 'sample-agent-alias-name';
+    
+        #The description of the alias of the agent
+        agent_alias_description = 'Alias for testing';
+        
+        #Name of the Bedrock Guardrail
+        guardrail_name = 'sample-guardrail-name';
+        
+        #A description of the guardrail version
+        guardrail_version_description = 'bedrock guardrail new version'
+        
 
         # Resources
 
         # Knowledge Base
         knowledge_base = bedrock.CfnKnowledgeBase(self, 'KnowledgeBaseWithAoss',
-            name=knowledge_base_name.value_as_string,
-            description=knowledge_base_description.value_as_string,
-            role_arn=bedrock_execution_role_arn_for_knowledge_base.value_as_string,
+            name=knowledge_base_name,
+            description=knowledge_base_description,
+            role_arn=bedrock_execution_role_arn_for_knowledge_base,
             knowledge_base_configuration={
                 'type': 'VECTOR',
                 'vectorKnowledgeBaseConfiguration': {
-                    'embeddingModelArn': embedding_model_arn.value_as_string
+                    'embeddingModelArn': embedding_model_arn
                 }
             },
             storage_configuration={
                 'type': 'OPENSEARCH_SERVERLESS',
                 'opensearchServerlessConfiguration': {
-                    'collectionArn': open_search_collection_arn.value_as_string,
-                    'vectorIndexName': aoss_index_name.value_as_string,
+                    'collectionArn': open_search_collection_arn,
+                    'vectorIndexName': aoss_index_name,
                     'fieldMapping': {
-                        'vectorField': vector_field.value_as_string,
-                        'textField': text_field.value_as_string,
-                        'metadataField': metadata_field.value_as_string
+                        'vectorField': vector_field,
+                        'textField': text_field,
+                        'metadataField': metadata_field
                     }
                 }
             }
@@ -141,11 +105,11 @@ class BedrockStack(Stack):
         # DataSource
         datasource = bedrock.CfnDataSource(self, 'DataSource',
             knowledge_base_id=knowledge_base.ref,
-            name=data_source_name.value_as_string,
+            name=data_source_name,
             data_source_configuration={
                 'type': 'S3',
                 's3Configuration': {
-                    'bucketArn': f'arn:aws:s3:::{data_source_bucket_name.value_as_string}'
+                    'bucketArn': f'arn:aws:s3:::{data_source_bucket_name}'
                 }
             },
             data_deletion_policy='DELETE'
@@ -181,17 +145,17 @@ class BedrockStack(Stack):
 
         # Bedrock Agent
         agent = bedrock.CfnAgent(self, 'Agent',
-            agent_name=agent_name.value_as_string,
+            agent_name=agent_name,
             agent_resource_role_arn=amazon_bedrock_execution_role_for_agents_qa.role_arn,
             auto_prepare=True,
-            foundation_model=foundation_model_for_agent.value_as_string,
-            instruction=agent_instruction.value_as_string,
-            description=agent_description.value_as_string,
+            foundation_model=foundation_model_for_agent,
+            instruction=agent_instruction,
+            description=agent_description,
             idle_session_ttl_in_seconds=900,
             customer_encryption_key_arn=agent_cmk.key_arn,
             knowledge_bases=[{
                 'knowledgeBaseId': knowledge_base.ref,
-                'description': knowledge_base_description.value_as_string,
+                'description': knowledge_base_description,
                 'knowledgeBaseState': 'ENABLED'
             }]
         )
@@ -199,15 +163,15 @@ class BedrockStack(Stack):
         # Bedrock Agent Alias
         agent_alias = bedrock.CfnAgentAlias(self, 'AgentAliasResource',
             agent_id=agent.ref,
-            agent_alias_name=agent_alias_name.value_as_string,
-            description=agent_alias_description.value_as_string
+            agent_alias_name=agent_alias_name,
+            description=agent_alias_description
         )
 
         # Bedrock Guardrail
         guardrail = bedrock.CfnGuardrail(self, 'Guardrail',
             blocked_input_messaging='Guardrail applied based on the input.',
             blocked_outputs_messaging='Guardrail applied based on output.',
-            name=guardrail_name.value_as_string,
+            name=guardrail_name,
             description='My Bedrock Guardrail created with AWS CFN',
             content_policy_config={
                 'filtersConfig': [
@@ -256,6 +220,6 @@ class BedrockStack(Stack):
 
         # Bedrock Guardrail Version
         guardrail_version = bedrock.CfnGuardrailVersion(self, 'GuardrailVersion',
-            description=guardrail_version_description.value_as_string,
+            description=guardrail_version_description,
             guardrail_identifier=guardrail.attr_guardrail_arn
         )

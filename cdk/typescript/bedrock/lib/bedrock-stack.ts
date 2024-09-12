@@ -10,100 +10,63 @@ export class BedrockStack extends cdk.Stack {
     super(scope, id, props);
 
     // Parameters
-    const openSearchCollectionArn = new cdk.CfnParameter(this, 'OpenSearchCollectionARN', {
-      type: 'String',
-      description: 'OpenSearch Service Serverless (AOSS) collection ARN.'
-    });
+    
+    //OpenSearch Service Serverless (AOSS) collection ARN.'
+    const openSearchCollectionArn = 'arn:aws:aoss:us-east-1:<account_id>:collection/<uuid>'; 
 
-    const embeddingModelArn = new cdk.CfnParameter(this, 'EmbeddingModelArn', {
-      type: 'String',
-      description: 'Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get'
-    });
+    //Knowledge Base Model Arn, can use \'aws bedrock list-foundation-models\' to get'
+    const embeddingModelArn = 'arn:aws:bedrock:us-east-1::foundation-model/amazon.titan-embed-text-v1'; 
 
-    const aossIndexName = new cdk.CfnParameter(this, 'AOSSIndexName', {
-      type: 'String',
-      description: 'Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.'
-    });
+    //Name of the vector index in the Amazon OpenSearch Service Serverless (AOSS) collection.
+    const aossIndexName = 'sample-index-name';
 
-    const vectorField = new cdk.CfnParameter(this, 'VectorField', {
-      type: 'String',
-      description: 'Provide a name for the field'
-    });
+    //Provide a name for the field
+    const vectorField = 'sample-vector';
 
-    const textField = new cdk.CfnParameter(this, 'TextField', {
-      type: 'String',
-      description: 'Provide additional information that a knowledge base can retrieve with vectors'
-    });
+    //Provide additional information that a knowledge base can retrieve with vectors
+    const textField = 'sample-text-filed';
 
-    const metadataField = new cdk.CfnParameter(this, 'MetadataField', {
-      type: 'String',
-      description: 'Provide additional metadata that a knowledge base can retrieve with vectors'
-    });
+    //Provide additional metadata that a knowledge base can retrieve with vectors
+    const metadataField = 'sample-metadata';
+    
+    //The name of the knowledge base
+    const knowledgeBaseName = 'sample-bedrock-knowledgebase';
 
-    const knowledgeBaseName = new cdk.CfnParameter(this, 'KnowledgeBaseName', {
-      type: 'String',
-      description: 'The name of the knowledge base.'
-    });
+    //The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy
+    const bedrockExecutionRoleArnForKnowledgeBase = 'arn:aws:iam::<account_id>:role/<role-name>';
+    
+    //The description of the knowledge base
+    const knowledgeBaseDescription = 'Answer based only on information contained in knowledge base';
+    
+    //Name of the Bedrock DataSource
+    const dataSourceName = 'sample-bedrock-datasourc';
+    
+    //Name of the S3 bucket which stored the DataSource
+    const dataSourceBucketName = 'sample-bucket-name';
+    
+    //Name of the Bedrock Agent
+    const agentName = 'sample-agent-name';
 
-    const bedrockExecutionRoleArnForKnowledgeBase = new cdk.CfnParameter(this, 'BedrockExecutionRoleARNForKnowledgeBase', {
-      type: 'String',
-      description: 'The knowledge base execution role-arn which is being trusted by your Opensearch serverless collection access-policy.'
-    });
+    //Foundation Model which will be used by your Bedrock Agent
+    const foundationModelForAgent = 'anthropic.claude-v2';
+    
+    //Instruction for your Bedrock Agent
+    const agentInstruction = 'You are a Q&A bot to answer questions on Amazon SageMaker';
 
-    const knowledgeBaseDescription = new cdk.CfnParameter(this, 'KnowledgeBaseDescription', {
-      type: 'String',
-      description: 'The description of the knowledge base.'
-    });
+    //Description for your Bedrock Agent
+    const agentDescription = 'Agent description is here';
+    
+    //The name of the alias of the agent
+    const agentAliasName = 'sample-agent-alias-name';
 
-    const dataSourceName = new cdk.CfnParameter(this, 'DataSourceName', {
-      type: 'String',
-      description: 'Name of the Bedrock DataSource'
-    });
-
-    const dataSourceBucketName = new cdk.CfnParameter(this, 'DataSourceBucketName', {
-      type: 'String',
-      description: 'Name of the S3 bucket which stored the DataSource'
-    });
-
-    const agentName = new cdk.CfnParameter(this, 'AgentName', {
-      type: 'String',
-      description: 'Name of the Bedrock Agent'
-    });
-
-    const foundationModelForAgent = new cdk.CfnParameter(this, 'FoundationModelForAgent', {
-      type: 'String',
-      description: 'Foundation Model which will be used by your Bedrock Agent'
-    });
-
-    const agentInstruction = new cdk.CfnParameter(this, 'AgentInstruction', {
-      type: 'String',
-      description: 'Instruction for your Bedrock Agent'
-    });
-
-    const agentDescription = new cdk.CfnParameter(this, 'AgentDescription', {
-      type: 'String',
-      description: 'Description for your Bedrock Agent'
-    });
-
-    const agentAliasName = new cdk.CfnParameter(this, 'AgentAliasName', {
-      type: 'String',
-      description: 'The name of the alias of the agent'
-    });
-
-    const agentAliasDescription = new cdk.CfnParameter(this, 'AgentAliasDescription', {
-      type: 'String',
-      description: 'The description of the alias of the agent'
-    });
-
-    const guardrailName = new cdk.CfnParameter(this, 'GuardrailName', {
-      type: 'String',
-      description: 'Name of the Bedrock Guardrail'
-    });
-
-    const guardrailVersionDescription = new cdk.CfnParameter(this, 'GuardrailVersionDescription', {
-      type: 'String',
-      description: 'A description of the guardrail version'
-    });
+    //The description of the alias of the agent
+    const agentAliasDescription = 'Alias for testing';
+    
+    //Name of the Bedrock Guardrail
+    const guardrailName = 'sample-guardrail-name';
+    
+    //A description of the guardrail version
+    const guardrailVersionDescription = 'bedrock guardrail new version'
     
     
     // Resources
