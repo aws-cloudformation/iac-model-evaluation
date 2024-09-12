@@ -3,94 +3,45 @@ import { Construct } from 'constructs';
 import { Duration, Stack, StackProps } from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dms from 'aws-cdk-lib/aws-dms';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as kms from 'aws-cdk-lib/aws-kms';
 
 export class DatabaseMigrationServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Parameters
-    const dmsSubnet1 = new cdk.CfnParameter(this, 'DMSSubnet1', {
-      type: 'String',
-      description: 'This will be used in DMS Replication SubnetGroup.'
-    });
-
-    const dmsSubnet2 = new cdk.CfnParameter(this, 'DMSSubnet2', {
-      type: 'String',
-      description: 'This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1.'
-    });
-
-    const dmsSecurityGroup = new cdk.CfnParameter(this, 'DMSSecurityGroup', {
-      type: 'String',
-      description: 'Specifies the VPC security group to be used with the replication instance.'
-    });
-
-    const dmsInstanceClass = new cdk.CfnParameter(this, 'DMSReplicationInstanceClass', {
-      type: 'String',
-      description: 'Specifies the compute and memory capacity of the replication instance.'
-    });
-
-    const dmsInstanceName = new cdk.CfnParameter(this, 'DMSReplicationInstanceName', {
-      type: 'String',
-      description: 'Specifies a name for the replication instance.'
-    });
     
-    const secretsManagerSecretNameForAurora = new cdk.CfnParameter(this, 'SecretsManagerSecretNameforAurora', {
-      type: 'String',
-      description: 'Specifies a name for the replication instance.',
-    });
-
-    const secretsManagerMysqlArn = new cdk.CfnParameter(this, 'SecretsManagerSecretARNforMySql', {
-      type: 'String',
-      description: 'Specifies the ARN of the SecretsManagerSecret that contains the MySQL endpoint connection details.'
-    });
-
-    const secretsManagerPostgresqlArn = new cdk.CfnParameter(this, 'SecretsManagerSecretARNforPostgreSql', {
-      type: 'String',
-      description: 'Specifies the ARN of the SecretsManagerSecret that contains the PostgreSQL endpoint connection details.'
-    });
+    //This will be used in DMS Replication SubnetGroup
+    const dmsSubnet1 = 'subnet-xxxx';
     
-    const kmsArnEncryptSecretForMySql = new cdk.CfnParameter(this, 'KmsArnEncryptSecretforMySqlDatabase', {
-      type: 'String',
-      description: 'Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for MySql Database.',
-    });
+    //This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1
+    const dmsSubnet2 = 'subnet-xxxx';
 
-    const kmsArnEncryptSecretForPostgresql = new cdk.CfnParameter(this, 'KmsArnEncryptSecretforPostgreSqlDatabase', {
-      type: 'String',
-      description: 'Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for PostgreSql Database.',
-    });
+    //Specifies the VPC security group to be used with the replication instance
+    const dmsSecurityGroup = 'sg-xxxx';
+    
+    //Specifies the compute and memory capacity of the replication instance
+    const dmsInstanceClass = 'dms.t3.medium';
 
-    const postgresqlDatabaseName = new cdk.CfnParameter(this, 'PostgreSqlDatabaseName', {
-      type: 'String',
-      description: 'Specifies the PostgreSql Database Name you want to use as Target Endpoint',
-    });
+    //Specifies a name for the replication instance
+    const dmsInstanceName = 'sample-repinstance';
+    
+    //Specifies the PostgreSql Database Name you want to use as Target Endpoint
+    const postgresqlDatabaseName = 'sample-postgresql-for-dms';
+    
+    //Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database)
+    const serverName = '<aurora-cluster-name>.cluster-<uuid>.<region>.rds.amazonaws.com';
+    
+    //Specifies the BucketName to be used with the DMS target endpoint
+    const bucketName = 'sample-bucket-name';
+    
+    //If the dms-vpc-role exists in your account, please enter Y, else enter N
+    const existsDmsVpcRole = 'N';
+    
+    //If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N
+    const existsDmsCloudwatchRole = 'N'
 
-    const serverName = new cdk.CfnParameter(this, 'ServerName', {
-      type: 'String',
-      description: 'Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database).'
-    });
-
-    const bucketName = new cdk.CfnParameter(this, 'BucketName', {
-      type: 'String',
-      description: 'Specifies the BucketName to be used with the DMS target endpoint.'
-    });
-
-    const existsDmsVpcRole = new cdk.CfnParameter(this, 'ExistsDMSVPCRole', {
-      type: 'String',
-      default: 'N',
-      minLength: 1,
-      maxLength: 1,
-      allowedPattern: '[YN]',
-      description: 'If the dms-vpc-role exists in your account, please enter Y, else enter N.'
-    });
-
-    const existsDmsCloudwatchRole = new cdk.CfnParameter(this, 'ExistsDMSCloudwatchRole', {
-      type: 'String',
-      default: 'N',
-      minLength: 1,
-      maxLength: 1,
-      allowedPattern: '[YN]',
-      description: 'If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N.'
-    });
 
     // Conditions
     const notExistsDmsVpcRole = new cdk.CfnCondition(this, 'NotExistsDMSVPCRole', {
@@ -135,14 +86,16 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
               effect: iam.Effect.ALLOW,
               actions: ['s3:PutObject', 's3:DeleteObject'],
               resources: [
-                cdk.Fn.sub('arn:aws:s3:::${BucketName}'),
-                cdk.Fn.sub('arn:aws:s3:::${BucketName}/*')
+                `arn:aws:s3:::${bucketName}`,
+                `arn:aws:s3:::${bucketName}/*`
               ]
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ['s3:ListBucket'],
-              resources: [cdk.Fn.sub('arn:aws:s3:::${BucketName}')]
+              resources: [
+                `arn:aws:s3:::${bucketName}`
+              ]
             })
           ]
         })
@@ -152,16 +105,16 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
     // DMS Replication Subnet Group
     const dmsReplicationSubnetGroup = new dms.CfnReplicationSubnetGroup(this, 'DMSReplicationSubnetGroup', {
       replicationSubnetGroupDescription: 'Subnets available for DMS',
-      subnetIds: [dmsSubnet1.valueAsString, dmsSubnet2.valueAsString]
+      subnetIds: [dmsSubnet1, dmsSubnet2]
     });
     dmsReplicationSubnetGroup.node.addDependency(s3TargetDmsRole);
 
     // DMS Replication Instance
     const dmsReplicationInstance = new dms.CfnReplicationInstance(this, 'DMSReplicationInstance', {
-      replicationInstanceClass: dmsInstanceClass.valueAsString,
-      replicationInstanceIdentifier: dmsInstanceName.valueAsString,
+      replicationInstanceClass: dmsInstanceClass,
+      replicationInstanceIdentifier: dmsInstanceName,
       replicationSubnetGroupIdentifier: dmsReplicationSubnetGroup.ref,
-      vpcSecurityGroupIds: [dmsSecurityGroup.valueAsString],
+      vpcSecurityGroupIds: [dmsSecurityGroup],
       multiAz: true,
       publiclyAccessible: false
     });
@@ -170,14 +123,19 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
     //////////////////////////////////////////////////////////////////////////
     // Replicate data from Aurora to S3 with AWS Database Migration Service //
     //////////////////////////////////////////////////////////////////////////
+    //Get the secret that store the Aurora Database username and password
+    const secretsManagerSecretForAurora = secretsmanager.Secret.fromSecretCompleteArn(this, 'SecretsManagerSecretNameforAurora', 
+      'arn:aws:secretsmanager:ap-southeast-2:743311230884:secret:aurora-source-enpoint-password-YMzobS'
+    );
+    
     // Aurora Source Endpoint
     const auroraSourceEndpoint = new dms.CfnEndpoint(this, 'AuroraSourceEndpoint', {
       endpointType: 'source',
       engineName: 'aurora',
-      username: cdk.Fn.sub('{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:username}}'),
-      password: cdk.Fn.sub('{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:password}}'),
+      username: cdk.Fn.sub(`{{resolve:secretsmanager:${secretsManagerSecretForAurora.secretName}:SecretString:username}}`),
+      password: cdk.Fn.sub(`{{resolve:secretsmanager:${secretsManagerSecretForAurora.secretName}:SecretString:password}}`),
       port: 3306,
-      serverName: serverName.valueAsString
+      serverName: serverName
     });
     auroraSourceEndpoint.node.addDependency(dmsReplicationInstance);
 
@@ -187,7 +145,7 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
       engineName: 's3',
       extraConnectionAttributes: 'addColumnName=true',
       s3Settings: {
-        bucketName: bucketName.valueAsString,
+        bucketName: bucketName,
         serviceAccessRoleArn: s3TargetDmsRole.roleArn
       }
     });
@@ -197,10 +155,30 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
     /////////////////////////////////////////////////////////////////////////////////
     // Replicate data from MySQL to PostgreSQL with AWS Database Migration Service //
     /////////////////////////////////////////////////////////////////////////////////
+    //Get SecretsManagerSecret that contains the MySQL endpoint connection detail
+    const secretsManagerSecretForMySql = secretsmanager.Secret.fromSecretCompleteArn(this, 'SecretsManagerSecretARNforMySql', 
+      'arn:aws:secretsmanager:<aws_region>:<aws_account>:secret:<secret_name>-uuid'
+    );
+    
+    //Get SecretsManagerSecret that contains the PostgreSQL endpoint connection detail
+    const secretsManagerSecretForPostgresql = secretsmanager.Secret.fromSecretCompleteArn(this, 'SecretsManagerSecretARNforPostgreSql', 
+      'arn:aws:secretsmanager:<aws_region>:<aws_account>:secret:<secret_name>-uuid'
+    );
+    
+    //Get KMS Arn that encrypt your secret for MySQL Database
+    const kmsArnEncryptSecretForMysql = kms.Key.fromKeyArn(this, 'KmsArnEncryptSecretforMySqlDatabase',
+      'arn:aws:kms:<aws_region>:<aws_account>:key/<key_id>'
+    );
+    
+    //Get KMS Arn that encrypt your secret for PostgreSQL Database
+    const kmsArnEncryptSecretForPostgresql = kms.Key.fromKeyArn(this, 'KmsArnEncryptSecretforPostgreSqlDatabase',
+      'arn:aws:kms:<aws_region>:<aws_account>:key/<key_id>'
+    );
+    
     // IAM role to access SecretsManager
     const secretsManagerAccessRoleForDatabases = new iam.Role(this, 'SecretsManagerAccessRoleForDatabases', {
       roleName: 'dms-secret-manager-access-role',
-      assumedBy: new iam.ServicePrincipal(cdk.Fn.sub('dms.${AWS::Region}.amazonaws.com')),
+      assumedBy: new iam.ServicePrincipal('dms.amazonaws.com'),
       inlinePolicies: {
         SecretsManagerPolicy: new iam.PolicyDocument({
           statements: [
@@ -208,16 +186,16 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
               effect: iam.Effect.ALLOW,
               actions: ['kms:Decrypt', 'kms:DescribeKey'],
               resources: [
-                kmsArnEncryptSecretForMySql.valueAsString,
-                kmsArnEncryptSecretForPostgresql.valueAsString
+                kmsArnEncryptSecretForMysql.keyArn,
+                kmsArnEncryptSecretForPostgresql.keyArn
               ]
             }),
             new iam.PolicyStatement({
               effect: iam.Effect.ALLOW,
               actions: ['secretsmanager:GetSecretValue'],
               resources: [
-                secretsManagerMysqlArn.valueAsString,
-                secretsManagerPostgresqlArn.valueAsString
+                secretsManagerSecretForMySql.secretArn,
+                secretsManagerSecretForPostgresql.secretArn
               ]
             })
           ]
@@ -231,7 +209,7 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
       engineName: 'mysql',
       mySqlSettings: {
         secretsManagerAccessRoleArn: secretsManagerAccessRoleForDatabases.roleArn,
-        secretsManagerSecretId: secretsManagerMysqlArn.valueAsString
+        secretsManagerSecretId: secretsManagerSecretForMySql.secretArn
       }
     });
     mysqlSourceEndpoint.node.addDependency(dmsReplicationInstance);
@@ -240,10 +218,10 @@ export class DatabaseMigrationServiceStack extends cdk.Stack {
     const postgresqlTargetEndpoint = new dms.CfnEndpoint(this, 'PostgreSqlTargetEndpoint', {
       endpointType: 'target',
       engineName: 'postgres',
-      databaseName: postgresqlDatabaseName.valueAsString,
+      databaseName: postgresqlDatabaseName,
       postgreSqlSettings: {
         secretsManagerAccessRoleArn: secretsManagerAccessRoleForDatabases.roleArn,
-        secretsManagerSecretId: secretsManagerPostgresqlArn.valueAsString
+        secretsManagerSecretId: secretsManagerSecretForPostgresql.secretArn
       }
     });
     postgresqlTargetEndpoint.node.addDependency(dmsReplicationInstance);

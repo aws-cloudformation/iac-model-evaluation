@@ -5,6 +5,8 @@ from aws_cdk import (
     Fn,
     aws_iam as iam,
     aws_dms  as dms,
+    aws_secretsmanager as secretsmanager,
+    aws_kms as kms
 )
 from constructs import Construct
 
@@ -14,88 +16,37 @@ class DatabaseMigrationServiceStack(Stack):
         super().__init__(scope, construct_id, **kwargs)
 
         # Parameters
-        dms_subnet1 = CfnParameter(self, "DMSSubnet1", 
-            type="String", 
-            description="This will be used in DMS Replication SubnetGroup."
-        )
-
-        dms_subnet2 = CfnParameter(self, "DMSSubnet2", 
-            type="String", 
-            description="This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1."
-        )
-
-        dms_security_group = CfnParameter(self, "DMSSecurityGroup", 
-            type="String", 
-            description="Specifies the VPC security group to be used with the replication instance."
-        )
-
-        dms_instance_class = CfnParameter(self, "DMSReplicationInstanceClass", 
-            type="String", 
-            description="Specifies the compute and memory capacity of the replication instance."
-        )
-
-        dms_instance_name = CfnParameter(self, "DMSReplicationInstanceName", 
-            type="String", 
-            description="Specifies a name for the replication instance."
-        )
         
-        secrets_manager_secret_name_for_aurora = CfnParameter(self, "SecretsManagerSecretNameforAurora", 
-            type="String", 
-            description="Specifies a name for the replication instance."
-        )
+        #This will be used in DMS Replication SubnetGroup
+        dms_subnet1 = 'subnet-xxxx'
         
-        secrets_manager_secret_arn_for_mysql = CfnParameter(self, "SecretsManagerSecretARNforMySql", 
-            type="String", 
-            description="Specifies the ARN of the SecretsManagerSecret that contains the MySQL endpoint connection details."
-        )
-
-        secrets_manager_secret_arn_for_postgresql = CfnParameter(self, "SecretsManagerSecretARNforPostgreSql", 
-            type="String", 
-            description="Specifies the ARN of the SecretsManagerSecret that contains the PostgreSQL endpoint connection details."
-        )
+        #This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zone than DBSubnet1
+        dms_subnet2 = 'subnet-xxxx'
+    
+        #Specifies the VPC security group to be used with the replication instance
+        dms_security_group = 'sg-xxxx'
         
-        kms_arn_encrypt_secret_for_mysql = CfnParameter(self, "KmsArnEncryptSecretforMySqlDatabase",
-            type="String", 
-            description="Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for MySql Database."
-        )
+        #Specifies the compute and memory capacity of the replication instance
+        dms_instance_class = 'dms.t3.medium'
+    
+        #Specifies a name for the replication instance
+        dms_instance_name = 'sample-repinstance'
         
-        kms_arn_encrypt_secret_for_postgresql = CfnParameter(self, "KmsArnEncryptSecretforPostgreSqlDatabase", 
-            type="String", 
-            description="Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for PostgreSql Database."
-        )
+        #Specifies the PostgreSql Database Name you want to use as Target Endpoint
+        postgresql_database_name = 'sample-postgresql-for-dms'
         
-        postgresql_database_name = CfnParameter(self, "PostgreSqlDatabaseName", 
-            type="String", 
-            description="Specifies the PostgreSql Database Name you want to use as Target Endpoint"
-        )
+        #Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database)
+        server_name = '<aurora-cluster-name>.cluster-<uuid>.<region>.rds.amazonaws.com'
+        
+        #Specifies the BucketName to be used with the DMS target endpoint
+        bucket_name = 'sample-bucket-name'
 
-        server_name = CfnParameter(self, "ServerName", 
-            type="String", 
-            description="Specifies the ServerName to be used with the DMS source endpoint (Writer endpoint of the Database)."
-        )
+        #If the dms-vpc-role exists in your account, please enter Y, else enter N
+        exists_dms_vpc_role = 'N'
 
-        bucket_name = CfnParameter(self, "BucketName", 
-            type="String", 
-            description="Specifies the BucketName to be used with the DMS target endpoint."
-        )
+        #If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N
+        exists_dms_cloudwatch_role ='N'
 
-        exists_dms_vpc_role = CfnParameter(self, "ExistsDMSVPCRole", 
-            type="String", 
-            default="N", 
-            min_length=1, 
-            max_length=1, 
-            allowed_pattern="[YN]", 
-            description="If the dms-vpc-role exists in your account, please enter Y, else enter N."
-        )
-
-        exists_dms_cloudwatch_role = CfnParameter(self, "ExistsDMSCloudwatchRole", 
-            type="String", 
-            default="N", 
-            min_length=1, 
-            max_length=1, 
-            allowed_pattern="[YN]", 
-            description="If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N."
-        )
 
         # Conditions
         not_exists_dms_vpc_role = CfnCondition(self, "NotExistsDMSVPCRole",
@@ -143,14 +94,14 @@ class DatabaseMigrationServiceStack(Stack):
                         effect=iam.Effect.ALLOW,
                         actions=["s3:PutObject", "s3:DeleteObject"],
                         resources=[
-                            Fn.sub("arn:aws:s3:::${BucketName}"),
-                            Fn.sub("arn:aws:s3:::${BucketName}/*")
+                            Fn.sub(f"arn:aws:s3:::{bucket_name}"),
+                            Fn.sub(f"arn:aws:s3:::{bucket_name}/*")
                         ]
                     ),
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
                         actions=["s3:ListBucket"],
-                        resources=[Fn.sub("arn:aws:s3:::${BucketName}")]
+                        resources=[Fn.sub(f"arn:aws:s3:::{bucket_name}")]
                     )
                 ])
             }
@@ -160,17 +111,17 @@ class DatabaseMigrationServiceStack(Stack):
         # DMS Replication Subnet Group
         dms_replication_subnet_group = dms.CfnReplicationSubnetGroup(self, "DMSReplicationSubnetGroup",
             replication_subnet_group_description="Subnets available for DMS",
-            subnet_ids=[dms_subnet1.value_as_string, dms_subnet2.value_as_string]
+            subnet_ids=[dms_subnet1, dms_subnet2]
         )
         dms_replication_subnet_group.node.add_dependency(s3_target_dms_role)
 
 
         # DMS Replication Instance
         dms_replication_instance = dms.CfnReplicationInstance(self, "DMSReplicationInstance",
-            replication_instance_class=dms_instance_class.value_as_string,
-            replication_instance_identifier=dms_instance_name.value_as_string,
+            replication_instance_class=dms_instance_class,
+            replication_instance_identifier=dms_instance_name,
             replication_subnet_group_identifier=dms_replication_subnet_group.ref,
-            vpc_security_group_ids=[dms_security_group.value_as_string],
+            vpc_security_group_ids=[dms_security_group],
             multi_az=True,
             publicly_accessible=False
         )
@@ -179,14 +130,19 @@ class DatabaseMigrationServiceStack(Stack):
         ########################################################################
         # Replicate data from Aurora to S3 with AWS Database Migration Service #
         ########################################################################
+        # Get the secret that store the Aurora Database username and password
+        secrets_manager_secret_arn_for_aurora = secretsmanager.Secret.from_secret_complete_arn(self, 'SecretsManagerSecretNameforAurora', 
+          secret_complete_arn='arn:aws:secretsmanager:<aws_region>:<aws_account>:secret:<secret_name>-uuid'
+        )
+        
         # Aurora Source Endpoint
         aurora_source_endpoint = dms.CfnEndpoint(self, "AuroraSourceEndpoint",
             endpoint_type="source",
             engine_name="aurora",
-            username=Fn.sub("{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:username}}"),
-            password=Fn.sub("{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:password}}"),
+            username=Fn.sub(f"{{resolve:secretsmanager:{secrets_manager_secret_arn_for_aurora.secret_name}:SecretString:username}}"),
+            password=Fn.sub(f"{{resolve:secretsmanager:{secrets_manager_secret_arn_for_aurora.secret_name}:SecretString:password}}"),
             port=3306,
-            server_name=server_name.value_as_string
+            server_name=server_name
         )
         aurora_source_endpoint.node.add_dependency(dms_replication_instance)
 
@@ -197,7 +153,7 @@ class DatabaseMigrationServiceStack(Stack):
             engine_name="s3",
             extra_connection_attributes="addColumnName=true",
             s3_settings=dms.CfnEndpoint.S3SettingsProperty(
-                bucket_name=bucket_name.value_as_string,
+                bucket_name=bucket_name,
                 service_access_role_arn=s3_target_dms_role.role_arn
             )
         )
@@ -207,26 +163,46 @@ class DatabaseMigrationServiceStack(Stack):
         ###############################################################################
         # Replicate data from MySQL to PostgreSQL with AWS Database Migration Service #
         ###############################################################################
+        # Get SecretsManagerSecret that contains the MySQL endpoint connection detail
+        secrets_manager_secret_arn_for_mysql = secretsmanager.Secret.from_secret_complete_arn(self, 'SecretsManagerSecretARNforMySql', 
+          secret_complete_arn='arn:aws:secretsmanager:<aws_region>:<aws_account>:secret:<secret_name>-uuid'
+        )
+                
+        # Get SecretsManagerSecret that contains the PostgreSQL endpoint connection detail
+        secrets_manager_secret_arn_for_postgresql = secretsmanager.Secret.from_secret_complete_arn(self, 'SecretsManagerSecretARNforPostgreSql', 
+          secret_complete_arn='arn:aws:secretsmanager:<aws_region>:<aws_account>:secret:<secret_name>-uuid'
+        )
+        
+        # Get KMS Arn that encrypt your secret for MySql Database
+        kms_arn_encrypt_secret_for_mysql = kms.Key.from_key_arn (self, 'KmsArnEncryptSecretforMySqlDatabase',
+          key_arn = 'arn:aws:kms:<aws_region>:<aws_account>:key/<key_id>'
+        )
+        
+        # Get KMS Arn that encrypt your secret for PostgreSql Database
+        kms_arn_encrypt_secret_for_postgresql = kms.Key.from_key_arn (self, 'KmsArnEncryptSecretforPostgreSqlDatabase',
+          key_arn = 'arn:aws:kms:<aws_region>:<aws_account>:key/<key_id>'
+        )       
+        
         # IAM role to access SecretsManager
         secrets_manager_access_role_for_databases = iam.Role(self, "SecretsManagerAccessRoleForDatabases",
             role_name="dms-secret-manager-access-role",
-            assumed_by=iam.ServicePrincipal(Fn.sub("dms.${AWS::Region}.amazonaws.com")),
+            assumed_by=iam.ServicePrincipal("dms.amazonaws.com"),
             inline_policies={
                 "SecretsManagerPolicy": iam.PolicyDocument(statements=[
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
                         actions=["kms:Decrypt", "kms:DescribeKey"],
                         resources=[
-                            kms_arn_encrypt_secret_for_mysql.value_as_string,
-                            kms_arn_encrypt_secret_for_postgresql.value_as_string
+                            kms_arn_encrypt_secret_for_mysql.key_arn,
+                            kms_arn_encrypt_secret_for_postgresql.key_arn
                         ]
                     ),
                     iam.PolicyStatement(
                         effect=iam.Effect.ALLOW,
                         actions=["secretsmanager:GetSecretValue"],
                         resources=[
-                            secrets_manager_secret_arn_for_mysql.value_as_string,
-                            secrets_manager_secret_arn_for_postgresql.value_as_string
+                            secrets_manager_secret_arn_for_mysql.secret_arn,
+                            secrets_manager_secret_arn_for_postgresql.secret_arn
                         ]
                     )
                 ])
@@ -239,7 +215,7 @@ class DatabaseMigrationServiceStack(Stack):
             engine_name="mysql",
             my_sql_settings=dms.CfnEndpoint.MySqlSettingsProperty(
                 secrets_manager_access_role_arn=secrets_manager_access_role_for_databases.role_arn,
-                secrets_manager_secret_id=secrets_manager_secret_arn_for_mysql.value_as_string
+                secrets_manager_secret_id=secrets_manager_secret_arn_for_mysql.secret_arn
             )
         )
         mysql_source_endpoint.node.add_dependency(dms_replication_instance)
@@ -248,10 +224,10 @@ class DatabaseMigrationServiceStack(Stack):
         postgresql_target_endpoint = dms.CfnEndpoint(self, "PostgreSqlTargetEndpoint",
             endpoint_type="target",
             engine_name="postgres",
-            database_name=postgresql_database_name.value_as_string,
+            database_name=postgresql_database_name,
             postgre_sql_settings=dms.CfnEndpoint.PostgreSqlSettingsProperty(
                 secrets_manager_access_role_arn=secrets_manager_access_role_for_databases.role_arn,
-                secrets_manager_secret_id=secrets_manager_secret_arn_for_postgresql.value_as_string
+                secrets_manager_secret_id=secrets_manager_secret_arn_for_postgresql.secret_arn
             )
         )
         postgresql_target_endpoint.node.add_dependency(dms_replication_instance)
