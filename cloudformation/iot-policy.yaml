@@ -1,0 +1,13 @@
+# An IOT Policy resource to declare an AWS IoT policy
+Resources:
+  iotPolicyTest:
+    Type: AWS::IoT::Policy 
+    Properties:
+      PolicyName: testPolicy
+      PolicyDocument: 
+        Version: '2012-10-17' 
+        Statement: 
+        - Effect: Allow 
+          Action: iot:Connect 
+          Resource: arn:aws:iot:us-east-1:${AWS::AccountId}:client/client1 
+    
