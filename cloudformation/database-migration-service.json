@@ -1,0 +1,437 @@
+{
+    "Description": "Create a Database Migration Service (AWS DMS) samples for Replication Subnet Group, Replication Instance. \nAurora Source Endpoints, S3 Target Endpoint, Replicate Task from Aurora to S3. \nMySQL Source Endpoints, PostgreSQL Target Endpoint, Replicate Task from MySQL to PostgreSQL. \n".
+    "Parameters": {
+        "DMSSubnet1": {
+            "Description": "This will be used in DMS Replication SubnetGroup.",
+            "Type": "String",
+        },
+        "DMSSubnet2": {
+            "Description": "This will be used in DMS Replication SubnetGroup, please provide a Subnet in the same VPC but in a different Availability Zones than DBSubnet1.",
+            "Type": "String",
+        },
+        "DMSSecurityGroup": {
+            "Description": "Specifies the VPC security group to be used with the replication instance. If your source database is in a VPC, choose the VPC security group that provides access to the DB instance where the database resides.",
+            "Type": "String",
+        },
+        "DMSReplicationInstanceClass": {
+            "Description": "Specifies the compute and memory capacity of the replication instance as defined for the specified replication instance class.",
+            "Type": "String",
+        },
+        "DMSReplicationInstanceName": {
+            "Description": "Specifies a name for the replication instance that contains from 8 to 16 printable ASCII characters (excluding /,\", and @). This parameter is stored as a lowercase string. The name should be unique for your account for the AWS Region you selected.",
+            "Type": "String",
+        },
+        "SecretsManagerSecretNameforAurora": {
+            "Description": "Specifies the SecretsManager Secret Name that store the Aurora Database username and password.",
+            "Type": "String",
+        },
+        "SecretsManagerSecretARNforMySql": {
+            "Description": "Specifies the full ARN, partial ARN, or display name of the SecretsManagerSecret that contains the MySQL endpoint connection details.",
+            "Type": "String",
+        },
+        "SecretsManagerSecretARNforPostgreSql": {
+            "Description": "Specifies the full ARN, partial ARN, or display name of the SecretsManagerSecret that contains the PostgreSQL endpoint connection details.",
+            "Type": "String",
+        },
+        "KmsArnEncryptSecretforMySqlDatabase": {
+            "Description": "Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for MySql Database.",
+            "Type": "String",
+        },
+        "KmsArnEncryptSecretforPostgreSqlDatabase": {
+            "Description": "Specifies the ARN of the AWS KMS key that you are using to encrypt your secret for PostgreSql Database.",
+            "Type": "String",
+        },
+        "PostgreSqlDatabaseName": {
+            "Description": "Specifies the PostgreSql Database Name you want to use as Target Endpoint",
+            "Type": "String",
+        },
+        "ServerName": {
+            "Description": "Specifies the ServerName to be used with the DMS Source Endpoint (this value should be the Writer endpoint of the Database).",
+            "Type": "String",
+        },
+        "BucketName": {
+            "Description": "Specifies the BucketName to be used with the DMS target endpoint.",
+            "Type": "String",
+        },
+        "ExistsDMSVPCRole": {
+            "Description": "If the dms-vpc-role exists in your account, please enter Y, else enter N",
+            "Type": "String",
+            "Default": "N",
+            "MinLength": "1",
+            "MaxLength": "1",
+            "AllowedPattern": "[YN]",
+            "ConstraintDescription": "Permitted value is Y or N."
+        },
+        "ExistsDMSCloudwatchRole": {
+            "Description": "If the dms-cloudwatch-logs-role exists in your account, please enter Y, else enter N",
+            "Type": "String",
+            "Default": "N",
+            "MinLength": "1",
+            "MaxLength": "1",
+            "AllowedPattern": "[YN]",
+            "ConstraintDescription": "Permitted value is Y or N."
+        }
+    },
+    "Conditions": {
+        "NotExistsDMSVPCRole": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistsDMSVPCRole"
+                },
+                "N"
+            ]
+        },
+        "NotExistsDMSCloudwatchRole": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ExistsDMSCloudwatchRole"
+                },
+                "N"
+            ]
+        }
+    },
+    "Resources": {
+        "DMSCloudwatchRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "dms-cloudwatch-logs-role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "dms.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonDMSCloudWatchLogsRole"
+                ],
+                "Path": "/"
+            },
+            "Condition": "NotExistsDMSCloudwatchRole"
+        },
+        "DMSVpcRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "dms-vpc-role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "dms.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AmazonDMSVPCManagementRole"
+                ],
+                "Path": "/"
+            },
+            "Condition": "NotExistsDMSVPCRole"
+        },
+        "S3TargetDMSRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "dms-s3-target-role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "dms.amazonaws.com"
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "S3TargetDMSRolePolicy": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "S3TargetDMSRole"
+                    }
+                ],
+                "PolicyName": "S3AccessForDMSPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:DeleteObject"
+                            ],
+                            "Resource": [
+                                {
+                                    "Fn::Sub": "arn:aws:s3:::${BucketName}"
+                                },
+                                {
+                                    "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+                                }
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "s3:ListBucket",
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${BucketName}"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "DMSReplicationSubnetGroup": {
+            "Type": "AWS::DMS::ReplicationSubnetGroup",
+            "DependsOn": [
+                "S3TargetDMSRole"
+            ],
+            "Properties": {
+                "ReplicationSubnetGroupDescription": "Subnets available for DMS",
+                "SubnetIds": [
+                    {
+                        "Ref": "DMSSubnet1"
+                    },
+                    {
+                        "Ref": "DMSSubnet2"
+                    }
+                ]
+            }
+        },
+        "DMSReplicationInstance": {
+            "Type": "AWS::DMS::ReplicationInstance",
+            "Properties": {
+                "MultiAZ": true,
+                "PubliclyAccessible": false,
+                "ReplicationInstanceClass": {
+                    "Ref": "DMSReplicationInstanceClass"
+                },
+                "ReplicationInstanceIdentifier": {
+                    "Ref": "DMSReplicationInstanceName"
+                },
+                "ReplicationSubnetGroupIdentifier": {
+                    "Ref": "DMSReplicationSubnetGroup"
+                },
+                "VpcSecurityGroupIds": [
+                    {
+                        "Ref": "DMSSecurityGroup"
+                    }
+                ]
+            }
+        },
+        "AuroraSourceEndpoint": {
+            "Type": "AWS::DMS::Endpoint",
+            "DependsOn": [
+                "DMSReplicationInstance"
+            ],
+            "Properties": {
+                "EndpointType": "source",
+                "EngineName": "aurora",
+                "Username": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:username}}"
+                },
+                "Password": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${SecretsManagerSecretNameforAurora}:SecretString:password}}"
+                },
+                "Port": 3306,
+                "ServerName": {
+                    "Ref": "ServerName"
+                }
+            }
+        },
+        "S3TargetEndpoint": {
+            "Type": "AWS::DMS::Endpoint",
+            "DependsOn": [
+                "DMSReplicationInstance"
+            ],
+            "Properties": {
+                "EndpointType": "target",
+                "EngineName": "s3",
+                "ExtraConnectionAttributes": "addColumnName=true",
+                "S3Settings": {
+                    "BucketName": {
+                        "Ref": "BucketName"
+                    },
+                    "ServiceAccessRoleArn": {
+                        "Fn::GetAtt": [
+                            "S3TargetDMSRole",
+                            "Arn"
+                        ]
+                    }
+                }
+            }
+        },
+        "SecretsManagerAccessRoleForDatabases": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "RoleName": "dms-secret-manager-access-role",
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    {
+                                        "Fn::Sub": "dms.${AWS::Region}.amazonaws.com"
+                                    }
+                                ]
+                            },
+                            "Action": [
+                                "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "SecretsManagerAccessRolePolicyForDatabases": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "SecretsManagerAccessRoleForDatabases"
+                    }
+                ],
+                "PolicyName": "SecretManagerAccessForDMSPolicy",
+                "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "kms:Decrypt",
+                                "kms:DescribeKey"
+                            ],
+                            "Resource": [
+                                {
+                                    "Ref": "KmsArnEncryptSecretforMySqlDatabase"
+                                },
+                                {
+                                    "Ref": "KmsArnEncryptSecretforPostgreSqlDatabase"
+                                }
+                            ]
+                        },
+                        {
+                            "Effect": "Allow",
+                            "Action": "secretsmanager:GetSecretValue",
+                            "Resource": [
+                                {
+                                    "Ref": "SecretsManagerSecretARNforMySql"
+                                },
+                                {
+                                    "Ref": "SecretsManagerSecretARNforPostgreSql"
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+        "MySQLSourceEndpoint": {
+            "Type": "AWS::DMS::Endpoint",
+            "DependsOn": [
+                "DMSReplicationInstance"
+            ],
+            "Properties": {
+                "EndpointType": "source",
+                "EngineName": "mysql",
+                "MySqlSettings": {
+                    "SecretsManagerAccessRoleArn": {
+                        "Fn::GetAtt": [
+                            "SecretsManagerAccessRoleForDatabases",
+                            "Arn"
+                        ]
+                    },
+                    "SecretsManagerSecretId": {
+                        "Ref": "SecretsManagerSecretARNforMySql"
+                    }
+                }
+            }
+        },
+        "PostgreSqlTargetEndpoint": {
+            "Type": "AWS::DMS::Endpoint",
+            "DependsOn": [
+                "DMSReplicationInstance"
+            ],
+            "Properties": {
+                "EndpointType": "target",
+                "EngineName": "postgres",
+                "DatabaseName": {
+                    "Ref": "PostgreSqlDatabaseName"
+                },
+                "PostgreSqlSettings": {
+                    "SecretsManagerAccessRoleArn": {
+                        "Fn::GetAtt": [
+                            "SecretsManagerAccessRoleForDatabases",
+                            "Arn"
+                        ]
+                    },
+                    "SecretsManagerSecretId": {
+                        "Ref": "SecretsManagerSecretARNforPostgreSql"
+                    }
+                }
+            }
+        },
+        "DMSReplicationTaskFromAuroraSourcetoS3Target": {
+            "Type": "AWS::DMS::ReplicationTask",
+            "Properties": {
+                "MigrationType": "full-load-and-cdc",
+                "ReplicationInstanceArn": {
+                    "Ref": "DMSReplicationInstance"
+                },
+                "ReplicationTaskSettings": "{ \"Logging\" : { \"EnableLogging\" : true, \"LogComponents\": [ { \"Id\" : \"SOURCE_UNLOAD\", \"Severity\" : \"LOGGER_SEVERITY_DEFAULT\" }, { \"Id\" : \"SOURCE_CAPTURE\", \"Severity\" : \"LOGGER_SEVERITY_DEFAULT\" }, { \"Id\" : \"TARGET_LOAD\", \"Severity\" : \"LOGGER_SEVERITY_DEFAULT\" }, { \"Id\" : \"TARGET_APPLY\", \"Severity\" : \"LOGGER_SEVERITY_DEFAULT\" } ] } }",
+                "SourceEndpointArn": {
+                    "Ref": "AuroraSourceEndpoint"
+                },
+                "TableMappings": "{ \"rules\": [ { \"rule-type\" : \"selection\", \"rule-id\" : \"1\", \"rule-name\" : \"1\", \"object-locator\" : { \"schema-name\" : \"%\", \"table-name\" : \"%\" }, \"rule-action\" : \"include\" } ] }",
+                "TargetEndpointArn": {
+                    "Ref": "S3TargetEndpoint"
+                }
+            }
+        },
+        "DMSReplicationTaskFromMySQLSourcetoPostgreSQLTarget": {
+            "Type": "AWS::DMS::ReplicationTask",
+            "Properties": {
+                "MigrationType": "full-load",
+                "ReplicationInstanceArn": {
+                    "Ref": "DMSReplicationInstance"
+                },
+                "ReplicationTaskSettings": "{ \"FullLoadSettings\": { \"CommitRate\": 10000, \"TargetTablePrepMode\": \"DROP_AND_CREATE\", \"CreatePkAfterFullLoad\": true }, \"BeforeImageSettings\": null, \"ControlTablesSettings\": { \"historyTimeslotInMinutes\": 5, \"HistoryTimeslotInMinutes\": 5}}",
+                "SourceEndpointArn": {
+                    "Ref": "MySQLSourceEndpoint"
+                },
+                "TableMappings": "{ \"rules\": [ { \"rule-type\": \"selection\", \"rule-id\": \"1\", \"rule-name\": \"1\", \"object-locator\": { \"schema-name\": \"%\", \"table-name\": \"%\" }, \"rule-action\": \"include\" } ] }",
+                "TargetEndpointArn": {
+                    "Ref": "PostgreSqlTargetEndpoint"
+                }
+            }
+        }
+    }
+}
