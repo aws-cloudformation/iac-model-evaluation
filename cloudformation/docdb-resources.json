@@ -1,0 +1,360 @@
+{
+    "Description": "Creates a VPC with 2 subnets, a KMS key, Security group for a DocDB Cluster with two DocDB Instances, custom DocDB ClusterParameterGroup and a DocDB Event subscription\"",
+    "Parameters": {
+        "EmailID": {
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "VPC": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": "10.0.0.0/16",
+                "EnableDnsHostnames": true,
+                "EnableDnsSupport": true,
+                "InstanceTenancy": "default"
+            }
+        },
+        "PrivateSubnet1": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::GetAZs": null
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        0,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                8
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateSubnet1RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateSubnet1RouteTableAssocation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateSubnet1RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnet1"
+                }
+            }
+        },
+        "PrivateSubnet2": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "AvailabilityZone": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::GetAZs": null
+                        }
+                    ]
+                },
+                "CidrBlock": {
+                    "Fn::Select": [
+                        1,
+                        {
+                            "Fn::Cidr": [
+                                {
+                                    "Fn::GetAtt": [
+                                        "VPC",
+                                        "CidrBlock"
+                                    ]
+                                },
+                                2,
+                                8
+                            ]
+                        }
+                    ]
+                },
+                "MapPublicIpOnLaunch": false,
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateSubnet2RouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "PrivateSubnet2RouteTableAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "PrivateSubnet2RouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "PrivateSubnet2"
+                }
+            }
+        },
+        "CustomClusterParameterGroup79BDC4D8": {
+            "Type": "AWS::DocDB::DBClusterParameterGroup",
+            "Properties": {
+                "Description": "Cluster parameter group for docdb5.0",
+                "Family": "docdb5.0",
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-CustomClusterParameterGroup"
+                },
+                "Parameters": {
+                    "audit_logs": "enabled",
+                    "profiler": "enabled",
+                    "tls": "enabled"
+                }
+            }
+        },
+        "DocDBSubnetGroup": {
+            "Type": "AWS::DocDB::DBSubnetGroup",
+            "Properties": {
+                "DBSubnetGroupDescription": "Subnets for DocDB database",
+                "SubnetIds": [
+                    {
+                        "Ref": "PrivateSubnet1"
+                    },
+                    {
+                        "Ref": "PrivateSubnet2"
+                    }
+                ]
+            }
+        },
+        "DocDBSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "DocumentDB security group",
+                "SecurityGroupEgress": [
+                    {
+                        "CidrIp": "0.0.0.0/0",
+                        "Description": "Allow all outbound traffic by default",
+                        "IpProtocol": "-1"
+                    }
+                ],
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "10.0.0.0/24",
+                        "FromPort": 27017,
+                        "IpProtocol": "tcp",
+                        "ToPort": 27017,
+                        "Description": "Access from the DocDBAccessCIDR specified"
+                    }
+                ],
+                "VpcId": {
+                    "Ref": "VPC"
+                }
+            }
+        },
+        "EncryptionKey": {
+            "Type": "AWS::KMS::Key",
+            "Properties": {
+                "Description": {
+                    "Fn::Join": [
+                        "- ",
+                        [
+                            "KMS Key for Cloudformation Stack ",
+                            {
+                                "Ref": "AWS::StackName"
+                            }
+                        ]
+                    ]
+                },
+                "EnableKeyRotation": true,
+                "KeyPolicy": {
+                    "Version": "2012-10-17",
+                    "Id": {
+                        "Ref": "AWS::StackName"
+                    },
+                    "Statement": [
+                        {
+                            "Sid": "Enable IAM User Permissions",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": [
+                                    {
+                                        "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                                    }
+                                ]
+                            },
+                            "Action": "kms:*",
+                            "Resource": "*"
+                        }
+                    ]
+                }
+            }
+        },
+        "EncryptionKeyAlias": {
+            "Type": "AWS::KMS::Alias",
+            "Properties": {
+                "AliasName": {
+                    "Fn::Sub": "alias/${AWS::StackName}"
+                },
+                "TargetKeyId": {
+                    "Ref": "EncryptionKey"
+                }
+            }
+        },
+        "DatabaseSecret": {
+            "Type": "AWS::SecretsManager::Secret",
+            "Properties": {
+                "GenerateSecretString": {
+                    "ExcludeCharacters": "\"@/:",
+                    "GenerateStringKey": "password",
+                    "PasswordLength": 41,
+                    "SecretStringTemplate": "{\"username\":\"myuser\"}"
+                },
+                "KmsKeyId": {
+                    "Ref": "EncryptionKeyAlias"
+                },
+                "Name": "/creds/mydocdb/masteruser"
+            }
+        },
+        "DatabaseSecretAttachment": {
+            "Type": "AWS::SecretsManager::SecretTargetAttachment",
+            "Properties": {
+                "SecretId": {
+                    "Ref": "DatabaseSecret"
+                },
+                "TargetId": {
+                    "Ref": "DocDBCluster"
+                },
+                "TargetType": "AWS::DocDB::DBCluster"
+            }
+        },
+        "DocDBCluster": {
+            "DeletionPolicy": "Snapshot",
+            "UpdateReplacePolicy": "Snapshot",
+            "Type": "AWS::DocDB::DBCluster",
+            "Properties": {
+                "CopyTagsToSnapshot": true,
+                "BackupRetentionPeriod": 7,
+                "DBClusterIdentifier": {
+                    "Fn::Sub": "${AWS::StackName}-DocDBCluster"
+                },
+                "DBClusterParameterGroupName": {
+                    "Ref": "CustomClusterParameterGroup79BDC4D8"
+                },
+                "DBSubnetGroupName": {
+                    "Ref": "DocDBSubnetGroup"
+                },
+                "MasterUserPassword": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}"
+                },
+                "MasterUsername": {
+                    "Fn::Sub": "{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}"
+                },
+                "StorageEncrypted": true,
+                "EnableCloudwatchLogsExports": [
+                    "audit",
+                    "profiler"
+                ],
+                "VpcSecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "DocDBSecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ]
+            }
+        },
+        "DatabaseInstance1": {
+            "Type": "AWS::DocDB::DBInstance",
+            "DependsOn": [
+                "PrivateSubnet1RouteTableAssocation",
+                "PrivateSubnet2RouteTableAssociation"
+            ],
+            "Properties": {
+                "DBClusterIdentifier": {
+                    "Ref": "DocDBCluster"
+                },
+                "DBInstanceClass": "db.r5.large",
+                "DBInstanceIdentifier": {
+                    "Fn::Sub": "${AWS::StackName}-DocDBClusterinstance1"
+                }
+            }
+        },
+        "DatabaseInstance2": {
+            "Type": "AWS::DocDB::DBInstance",
+            "DependsOn": [
+                "PrivateSubnet1RouteTableAssocation",
+                "PrivateSubnet2RouteTableAssociation"
+            ],
+            "Properties": {
+                "DBClusterIdentifier": {
+                    "Ref": "DocDBCluster"
+                },
+                "DBInstanceClass": "db.r5.large",
+                "DBInstanceIdentifier": {
+                    "Fn::Sub": "${AWS::StackName}-DocDBClusterinstance2"
+                }
+            }
+        },
+        "SNSTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "KmsMasterKeyId": "alias/aws/sns"
+            }
+        },
+        "SNSTopicSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Properties": {
+                "Endpoint": {
+                    "Ref": "EmailID"
+                },
+                "Protocol": "email",
+                "TopicArn": {
+                    "Ref": "SNSTopic"
+                }
+            }
+        },
+        "MyCfnEventSubscription": {
+            "Type": "AWS::DocDB::EventSubscription",
+            "Properties": {
+                "Enabled": false,
+                "SnsTopicArn": {
+                    "Ref": "SNSTopic"
+                },
+                "SourceIds": [
+                    {
+                        "Ref": "DocDBCluster"
+                    }
+                ],
+                "SourceType": "db-cluster",
+                "SubscriptionName": {
+                    "Fn::Sub": "${AWS::StackName}-EventSubscription"
+                }
+            }
+        }
+    }
+}

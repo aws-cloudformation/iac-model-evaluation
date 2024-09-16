@@ -1,0 +1,224 @@
+
+Description: Creates a VPC with 2 subnets, a KMS key, Security group for a DocDB Cluster with two DocDB Instances, custom DocDB ClusterParameterGroup and a DocDB Event subscription"
+
+Parameters:
+  EmailID:
+    Type: String
+
+Resources:
+  # Create default tenancy VPC with DNS hostname and resolution support using a /16 subnet mask
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      InstanceTenancy: default
+      
+  # Create Private subnet in 1st Available AZ with the first /24 subnet mask of the VPC CIDR
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 0
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 8
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create a RouteTable for PrivateSubnet1
+  PrivateSubnet1RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  #  Associate the RouteTable with PrivateSubnet1
+  PrivateSubnet1RouteTableAssocation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateSubnet1RouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  # Create Private subnet in 2nd available AZ with the second /24 subnet mask of the VPC CIDR
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      CidrBlock: !Select
+        - 1
+        - Fn::Cidr:
+            - !GetAtt VPC.CidrBlock
+            - 2
+            - 8
+      MapPublicIpOnLaunch: false
+      VpcId: !Ref VPC
+
+  # Create a RouteTable for PrivateSubnet2
+  PrivateSubnet2RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  #  Associate the RouteTable with PrivateSubnet2
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateSubnet2RouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  # Create a custom DocDB cluster parameter group that enables TLS, auditing and profiling on cluster.
+  CustomClusterParameterGroup79BDC4D8:
+    Type: AWS::DocDB::DBClusterParameterGroup
+    Properties:
+      Description: Cluster parameter group for docdb5.0
+      Family: docdb5.0
+      Name: !Sub '${AWS::StackName}-CustomClusterParameterGroup'
+      Parameters:
+        audit_logs: enabled
+        profiler: enabled
+        tls: enabled
+
+  # Create a DocDB Subnet group using the created subnets from above
+  DocDBSubnetGroup:
+    Type: AWS::DocDB::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for DocDB database
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+
+  # Create a Security Group for the RDS database to allow inbound traffic on the assigned DB port from the DocDBAccess CIDR specified
+  DocDBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: DocumentDB security group
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      SecurityGroupIngress:
+        - CidrIp: 10.0.0.0/24
+          FromPort: 27017
+          IpProtocol: tcp
+          ToPort: 27017
+          Description: Access from the DocDBAccessCIDR specified
+      VpcId: !Ref VPC
+
+  # Create a KMS key to be used with the Secrets Manager secret storing DocDB cluster credential information, along with a key policy for Root access
+  EncryptionKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Join [ "- ", [ "KMS Key for Cloudformation Stack ", !Ref AWS::StackName ] ]
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: !Ref AWS::StackName
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: 'kms:*'
+            Resource: '*'
+  
+  # Create an Alias for the Encryption key to be used with the Secrets Manager secret storing DocDB cluster credential information
+  EncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}"
+      TargetKeyId: !Ref EncryptionKey
+
+  # Create a secret to store the credentials for the DocDB cluster
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      GenerateSecretString:
+        ExcludeCharacters: '"@/:'
+        GenerateStringKey: password
+        PasswordLength: 41
+        SecretStringTemplate: '{"username":"myuser"}'
+      KmsKeyId: !Ref EncryptionKeyAlias
+      Name: /creds/mydocdb/masteruser
+  
+  # Create a secret target attachment to associate the secret created above with the DocDB cluster
+  DatabaseSecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref DatabaseSecret
+      TargetId: !Ref DocDBCluster
+      TargetType: AWS::DocDB::DBCluster
+
+  # Create a DocDB cluster with a deletion and update policy of "Snapshot"
+  DocDBCluster:
+    Type: AWS::DocDB::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      CopyTagsToSnapshot: true
+      BackupRetentionPeriod: 7
+      DBClusterIdentifier: !Sub '${AWS::StackName}-DocDBCluster'
+      DBClusterParameterGroupName: !Ref CustomClusterParameterGroup79BDC4D8
+      DBSubnetGroupName: !Ref DocDBSubnetGroup
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}'
+      StorageEncrypted: true
+      EnableCloudwatchLogsExports:
+        - audit
+        - profiler
+      VpcSecurityGroupIds:
+        - !GetAtt DocDBSecurityGroup.GroupId
+
+  # Create a DocDB instance for the DodDB Cluster, that uses a "db.r5.large" instance class
+  DatabaseInstance1:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DocDBCluster
+      DBInstanceClass: db.r5.large
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-DocDBClusterinstance1'
+    DependsOn:
+      - PrivateSubnet1RouteTableAssocation
+      - PrivateSubnet2RouteTableAssociation
+  
+  # Create a second DocDB instance for the DodDB Cluster, that uses a "db.r5.large" instance class
+  DatabaseInstance2:
+    Type: AWS::DocDB::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref DocDBCluster
+      DBInstanceClass: db.r5.large
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-DocDBClusterinstance2'
+    DependsOn:
+      - PrivateSubnet1RouteTableAssocation
+      - PrivateSubnet2RouteTableAssociation
+  
+  # Create a SNS topic
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      KmsMasterKeyId: alias/aws/sns
+
+  # Create a SNS topic subscription to subscribe the Email provided with the SNS topic created above
+  SNSTopicSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: !Ref EmailID
+      Protocol: email
+      TopicArn: !Ref SNSTopic
+
+  # Create a DocumentDB event notification subscription.
+  MyCfnEventSubscription:
+    Type: AWS::DocDB::EventSubscription
+    Properties:
+      Enabled: false
+      SnsTopicArn: !Ref SNSTopic
+      SourceIds:
+        - !Ref DocDBCluster
+      SourceType: db-cluster
+      SubscriptionName: !Sub '${AWS::StackName}-EventSubscription'
