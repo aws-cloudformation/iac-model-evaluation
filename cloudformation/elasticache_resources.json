@@ -1,0 +1,191 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "CloudFormation template for ElastiCache resources setup with various resources.",
+    "Parameters": {
+        "VPCId": {
+            "Description": "Enter default VPC. Using existing Default VPC as SecurityGroupIngress resource can only be created with Default VPC.",
+            "Type": "String",
+            "Default": "vpc-f576f788"
+        },
+        "SubnetId1": {
+            "Description": "Enter required Subnet 1.",
+            "Type": "String",
+            "Default": "subnet-11b3c030"
+        },
+        "SubnetId2": {
+            "Description": "Enter required Subnet 2.",
+            "Type": "String",
+            "Default": "subnet-6b34400d"
+        }
+    },
+    "Resources": {
+        "EC2SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for EC2 instances",
+                "GroupName": "myec2securitygroup",
+                "VpcId": {
+                    "Ref": "VPCId"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": 0,
+                        "ToPort": 65535,
+                        "CidrIp": "0.0.0.0/0"
+                    }
+                ]
+            }
+        },
+        "ElastiCacheSecurityGroup": {
+            "Type": "AWS::ElastiCache::SecurityGroup",
+            "Properties": {
+                "Description": "Security group for ElastiCache",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": "ElastiCacheSecurityGroup"
+                    }
+                ]
+            }
+        },
+        "ElastiCacheSecurityGroupIngress": {
+            "Type": "AWS::ElastiCache::SecurityGroupIngress",
+            "DependsOn": "EC2SecurityGroup",
+            "Properties": {
+                "CacheSecurityGroupName": {
+                    "Ref": "ElastiCacheSecurityGroup"
+                },
+                "EC2SecurityGroupName": "myec2securitygroup",
+                "EC2SecurityGroupOwnerId": {
+                    "Ref": "AWS::AccountId"
+                }
+            }
+        },
+        "ElastiCacheParameterGroup": {
+            "Type": "AWS::ElastiCache::ParameterGroup",
+            "Properties": {
+                "CacheParameterGroupFamily": "redis7",
+                "Description": "Parameter group for ElastiCache",
+                "Properties": {
+                    "maxmemory-policy": "allkeys-lru"
+                }
+            }
+        },
+        "ElastiCacheReplicationGroup": {
+            "Type": "AWS::ElastiCache::ReplicationGroup",
+            "Properties": {
+                "ReplicationGroupDescription": "Replication group for ElastiCache",
+                "ReplicationGroupId": "my-replication-group",
+                "CacheNodeType": "cache.m5.large",
+                "Engine": "redis",
+                "NumCacheClusters": 2,
+                "CacheParameterGroupName": {
+                    "Ref": "ElastiCacheParameterGroup"
+                }
+            }
+        },
+        "ElastiCacheGlobalReplicationGroup": {
+            "Type": "AWS::ElastiCache::GlobalReplicationGroup",
+            "Properties": {
+                "GlobalReplicationGroupDescription": "Global replication group for ElastiCaches",
+                "GlobalReplicationGroupIdSuffix": "global1",
+                "Members": [
+                    {
+                        "ReplicationGroupId": {
+                            "Ref": "ElastiCacheReplicationGroup"
+                        },
+                        "ReplicationGroupRegion": "us-east-1",
+                        "Role": "PRIMARY"
+                    }
+                ]
+            }
+        },
+        "ElastiCacheSubnetGroup": {
+            "Type": "AWS::ElastiCache::SubnetGroup",
+            "Properties": {
+                "CacheSubnetGroupName": "my-cache-subnet-group",
+                "Description": "Subnet group with required subnets",
+                "SubnetIds": [
+                    {
+                        "Ref": "SubnetId1"
+                    },
+                    {
+                        "Ref": "SubnetId2"
+                    }
+                ]
+            }
+        },
+        "ElastiCacheUser": {
+            "Type": "AWS::ElastiCache::User",
+            "Properties": {
+                "UserName": "default",
+                "UserId": "u1",
+                "Engine": "redis",
+                "AccessString": "on ~* +@all",
+                "NoPasswordRequired": true
+            }
+        },
+        "ElastiCacheUserGroup": {
+            "Type": "AWS::ElastiCache::UserGroup",
+            "Properties": {
+                "UserIds": [
+                    {
+                        "Ref": "ElastiCacheUser"
+                    }
+                ],
+                "Engine": "redis",
+                "UserGroupId": "a1"
+            }
+        },
+        "ElastiCacheServerlessCache": {
+            "Type": "AWS::ElastiCache::ServerlessCache",
+            "Properties": {
+                "Engine": "redis",
+                "ServerlessCacheName": "mycache"
+            }
+        },
+        "ElasticacheCluster": {
+            "Type": "AWS::ElastiCache::CacheCluster",
+            "Properties": {
+                "Engine": "redis",
+                "CacheNodeType": "cache.m5.large",
+                "NumCacheNodes": "1",
+                "VpcSecurityGroupIds": [
+                    {
+                        "Fn::GetAtt": [
+                            "EC2SecurityGroup",
+                            "GroupId"
+                        ]
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "SecurityGroupId": {
+            "Description": "Security Group ID for ElastiCache",
+            "Value": {
+                "Ref": "ElastiCacheSecurityGroup"
+            }
+        },
+        "ReplicationGroupId": {
+            "Description": "Replication Group ID for ElastiCache",
+            "Value": {
+                "Ref": "ElastiCacheReplicationGroup"
+            }
+        },
+        "GlobalReplicationGroupId": {
+            "Description": "Global Replication Group ID for ElastiCache",
+            "Value": {
+                "Ref": "ElastiCacheGlobalReplicationGroup"
+            }
+        },
+        "UserGroupId": {
+            "Description": "User Group ID for ElastiCache",
+            "Value": {
+                "Ref": "ElastiCacheUserGroup"
+            }
+        }
+    }
+}
